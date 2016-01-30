@@ -139,7 +139,7 @@ int shiftElement(int lineno)  {
   if(instructionMatrix[lineno].command == "") return 0;          //Don't write coords if there isn't a command.
   if(instructionMatrix[lineno].xCoord != NULL) instructionMatrix[lineno].xCoord = instructionMatrix[lineno].xCoord + Xshift;
   if(instructionMatrix[lineno].yCoord != NULL) instructionMatrix[lineno].yCoord = instructionMatrix[lineno].yCoord + Yshift;
-  if(instructionMatrix[lineno].zCoord != NULL) instructionMatrix[lineno].zCoord = instructionMatrix[lineno].zCoord + Zshift;
+  instructionMatrix[lineno].zCoord = instructionMatrix[lineno].zCoord + Zshift; //Some transformations are skewed if Z-coordinates not present.
   return 0;
 }
 //Reverse of the parseLine() function, but this is much simpler.
