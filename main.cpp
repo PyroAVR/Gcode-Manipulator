@@ -20,9 +20,9 @@ enum {
 //a line of gcode.
 std::regex linenoRegex("N[\\s]?[0-9]+");                 //N<numbers>
 std::regex commandRegex("[GM][\\s]?[0-9]+");            //M<numbers> or <G<numbers>
-std::regex Xregex("X[\\s]?[0-9]*[.]?[0-9]*");           //X<numbers>.<numbers> or X <numbers>.<numbers>
-std::regex Yregex("Y[\\s]?[0-9]*[.]?[0-9]*");           //Y<numbers>.<numbers> or Y <numbers>.<numbers>
-std::regex Zregex("Z[\\s]?[0-9]*[.]?[0-9]*");           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
+std::regex Xregex("X[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //X<numbers>.<numbers> or X <numbers>.<numbers>
+std::regex Yregex("Y[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Y<numbers>.<numbers> or Y <numbers>.<numbers>
+std::regex Zregex("Z[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
 std::string commentDelimiter = ";";                     //Like assembly, gcode comments are denoted with a ;
 int bufferSize = 255;                                   //Lines cannot be longer than this
 std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
@@ -120,7 +120,6 @@ int parseLine(std::string line)  {
   std::regex_search(XmatchString, Xcoord, coordRegex);
   std::regex_search(YmatchString, Ycoord, coordRegex);
   std::regex_search(ZmatchString, Zcoord, coordRegex);
-  //std::string X = Xcoord[0];
   gInstruction currentLine = {linenoMatch[0], commandMatch[0], atof(Xcoord[0].str().c_str()), atof(Ycoord[0].str().c_str()), atof(Zcoord[0].str().c_str()), comment};
   instructionMatrix.push_back(currentLine);
   memset(&currentLine, NULL, sizeof(currentLine));
@@ -174,13 +173,15 @@ int main(int argc, char *argv[])  {
   while(! input.eof())  {
     input.getline(inputBuffer, bufferSize, '\n');
     linecount++;
+    std::cout << "[parse] line " << linecount << std::endl;
     parseLine(inputBuffer);
     memset(inputBuffer, NULL, bufferSize);
   }
 
   input.close();
-  std::cout << "Input read successfully: " << linecount << std::endl;
+  std::cout << "Input read successfully: " << linecount << " lines parsed." << std::endl;
   for(int i = 0; i <= linecount; i++) {
+    std::cout << "[translate] (" << i << "/" << linecount << ") " << (static_cast<float>(i)/static_cast<float>(linecount))*100 << "%"  << std::endl;
     shiftElement(i);
     writeLine(i);
   }
