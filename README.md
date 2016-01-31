@@ -1,13 +1,16 @@
 **Gcode Manipulator**
+
 *what an uncreative name...*
 
 This program performs Cartesian translations on Gcode files.
 It can handle the following codes:
+
 G
 M
 F
 P
 ;comments
+
 It is unconcerned with spaces and other whitespace, and will print neatly formatted output.
 It has low memory usage due to reading only one line at a time to avoid data duplication in memory.
 For this reason, it can handly _very_ large files with almost no impact on system resources beyond
