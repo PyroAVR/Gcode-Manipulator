@@ -18,11 +18,12 @@ enum {
 } exitCodes;
 //Regular expressions for the various selections needed in order to parse
 //a line of gcode.
-std::regex linenoRegex("N[\\s]?[0-9]+");                 //N<numbers>
-std::regex commandRegex("[GM][\\s]?[0-9]+");            //M<numbers> or <G<numbers>
+std::regex linenoRegex("N[\\s]?[0-9]+");                        //N<numbers>
+std::regex commandRegex("[GM][\\s]?[0-9]+[.]?[0-9]+");         //GMFP<numbers>.<numbers>
 std::regex Xregex("X[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //X<numbers>.<numbers> or X <numbers>.<numbers>
 std::regex Yregex("Y[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Y<numbers>.<numbers> or Y <numbers>.<numbers>
 std::regex Zregex("Z[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
+std::regex specialRegex("[FP][\\s]?[0-9]*[.]?[0-9]*");        //FP<numbers>.<numbers>
 std::string commentDelimiter = ";";                     //Like assembly, gcode comments are denoted with a ;
 int bufferSize = 255;                                   //Lines cannot be longer than this
 std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
@@ -43,6 +44,7 @@ std::ofstream output;
 struct gInstruction {
   std::string lineno;
   std::string command;
+  std::string specialCommand;
   double xCoord;
   double yCoord;
   double zCoord;
@@ -87,7 +89,7 @@ int parseLine(std::string line)  {
   std::smatch Xmatch;
   std::smatch Ymatch;
   std::smatch Zmatch;
-
+  std::smatch specialMatch;
   std::string comment;
   if(line.find(commentDelimiter) <= line.length()) {
     comment = line.substr(line.find(commentDelimiter), std::string::npos);
@@ -96,10 +98,11 @@ int parseLine(std::string line)  {
 
   std::regex_search(line, linenoMatch, linenoRegex);
   std::regex_search(line, commandMatch, commandRegex);
+  std::regex_search(line, specialMatch, specialRegex);
   std::regex_search(line, Xmatch, Xregex);
   std::regex_search(line, Ymatch, Yregex);
   std::regex_search(line, Zmatch, Zregex);
-
+  //specials excluded from syntax checker
   if(linenoMatch.size() > 1 || commandMatch.size() > 1 || Xmatch.size() > 1 || Ymatch.size() > 1 || Zmatch.size() > 1)  {
     cleanup(_crash_, "Something's wrong with the syntax on this line:\n" + line);
   }
@@ -120,7 +123,7 @@ int parseLine(std::string line)  {
   std::regex_search(XmatchString, Xcoord, coordRegex);
   std::regex_search(YmatchString, Ycoord, coordRegex);
   std::regex_search(ZmatchString, Zcoord, coordRegex);
-  gInstruction currentLine = {linenoMatch[0], commandMatch[0], atof(Xcoord[0].str().c_str()), atof(Ycoord[0].str().c_str()), atof(Zcoord[0].str().c_str()), comment};
+  gInstruction currentLine = {linenoMatch[0], commandMatch[0], specialMatch[0], atof(Xcoord[0].str().c_str()), atof(Ycoord[0].str().c_str()), atof(Zcoord[0].str().c_str()), comment};
   instructionMatrix.push_back(currentLine);
   memset(&currentLine, NULL, sizeof(currentLine));
   return 0;
@@ -134,6 +137,7 @@ int shiftElement(int lineno)  {
   * position in that axis.  Therefore, we have to not apply any shifts if there is nothing to shift.
   * To keep the program short, we check if there IS something, and then write, rather than check all
   * possible cases in which there might NOT be something. Efficiency, HAYO!
+  * This also applies to writeLine.  It doesn't have to check for null commands due to this architecture.
   */
   if(instructionMatrix[lineno].command == "") return 0;          //Don't write coords if there isn't a command.
   if(instructionMatrix[lineno].xCoord != NULL) instructionMatrix[lineno].xCoord = instructionMatrix[lineno].xCoord + Xshift;
@@ -144,14 +148,9 @@ int shiftElement(int lineno)  {
 //Reverse of the parseLine() function, but this is much simpler.
 int writeLine(int lineno) {
   std::string newLine;
-  //If no command, don't add coords.  Will result in errors.  This one has to be checked individually due to comment lines.
-  if(instructionMatrix[lineno].command != "") {
-    newLine += instructionMatrix[lineno].lineno + " ";
-    newLine += instructionMatrix[lineno].comment;
-    output << newLine << std::endl;
-  }
   if(instructionMatrix[lineno].lineno != "") newLine += instructionMatrix[lineno].lineno + " ";                                     //N042
-  newLine += instructionMatrix[lineno].command + " ";                                                                                      //N042 G01 (Already checked above!)
+  newLine += instructionMatrix[lineno].command + " ";                                                                               //N042 G01 (Already checked above!)
+  newLine += instructionMatrix[lineno].specialCommand + " ";
   if(instructionMatrix[lineno].xCoord != NULL) newLine += "X" + std::to_string(instructionMatrix[lineno].xCoord) + " ";             //N042 G01 X0.0525
   if(instructionMatrix[lineno].yCoord != NULL) newLine += "Y" + std::to_string(instructionMatrix[lineno].yCoord) + " ";            //N042 G01 X0.0525 Y2
   if(instructionMatrix[lineno].zCoord != NULL) newLine += "Z" + std::to_string(instructionMatrix[lineno].zCoord) + " ";            //N042 G01 X0.0525 Y2 Z-1.25
