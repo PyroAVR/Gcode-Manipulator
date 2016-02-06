@@ -19,7 +19,7 @@ enum {
 //Regular expressions for the various selections needed in order to parse
 //a line of gcode.
 std::regex linenoRegex("N[\\s]?[0-9]+");                        //N<numbers>
-std::regex commandRegex("[GM][\\s]?[0-9]+[.]?[0-9]+");         //GMFP<numbers>.<numbers>
+std::regex commandRegex("[GM][\\s]?[0-9]+[.]?[0-9]*");         //GM<numbers>.<numbers>
 std::regex Xregex("X[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //X<numbers>.<numbers> or X <numbers>.<numbers>
 std::regex Yregex("Y[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Y<numbers>.<numbers> or Y <numbers>.<numbers>
 std::regex Zregex("Z[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
