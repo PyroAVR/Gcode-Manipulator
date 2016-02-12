@@ -19,11 +19,11 @@ enum {
 //Regular expressions for the various selections needed in order to parse
 //a line of gcode.
 std::regex linenoRegex("N[\\s]?[0-9]+");                        //N<numbers>
-std::regex commandRegex("[GM][\\s]?[0-9]+[.]?[0-9]*");         //GM<numbers>.<numbers>
+std::regex commandRegex("[GM][\\s]?[0-9]+[.]?[0-9]*");         //GM<numbers>.<numbers> or GM <numbers>.<numbers>
 std::regex Xregex("X[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //X<numbers>.<numbers> or X <numbers>.<numbers>
 std::regex Yregex("Y[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Y<numbers>.<numbers> or Y <numbers>.<numbers>
 std::regex Zregex("Z[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
-std::regex specialRegex("[FP][\\s]?[0-9]*[.]?[0-9]*");        //FP<numbers>.<numbers>
+std::regex specialRegex("[SFP][\\s]?[0-9]*[.]?[0-9]*");        //SFP<numbers>.<numbers> or SFP <numbers>.<numbers>
 std::string commentDelimiter = ";";                     //Like assembly, gcode comments are denoted with a ;
 int bufferSize = 255;                                   //Lines cannot be longer than this
 std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
