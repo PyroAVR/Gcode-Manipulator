@@ -6,3 +6,7 @@ CXX		= clang++
 
 all:
 	$(CXX) $(FLAGS) $(OPTIMIZATION) main.cpp -o gcmanip
+
+install:
+	cp gcmanip /usr/bin/gcode-manipulator
+	ln -s /usr/bin/gcode-manipulator /usr/bin/gcmanip
