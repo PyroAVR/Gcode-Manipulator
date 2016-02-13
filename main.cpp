@@ -11,6 +11,7 @@
 #include <vector>
 #include <cstdlib>
 #include <cstring>
+#include <cmath>
 
 enum {
   _crash_,
@@ -19,11 +20,11 @@ enum {
 //Regular expressions for the various selections needed in order to parse
 //a line of gcode.
 std::regex linenoRegex("N[\\s]?[0-9]+");                        //N<numbers>
-std::regex commandRegex("[GM][\\s]?[0-9]+[.]?[0-9]*");         //GM<numbers>.<numbers> or GM <numbers>.<numbers>
-std::regex Xregex("X[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //X<numbers>.<numbers> or X <numbers>.<numbers>
-std::regex Yregex("Y[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Y<numbers>.<numbers> or Y <numbers>.<numbers>
-std::regex Zregex("Z[\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
-std::regex specialRegex("[SFP][\\s]?[0-9]*[.]?[0-9]*");        //SFP<numbers>.<numbers> or SFP <numbers>.<numbers>
+std::regex commandRegex("[GMgm][\\s]?[0-9]+[.]?[0-9]*");         //GM<numbers>.<numbers> or GM <numbers>.<numbers>
+std::regex Xregex("[Xx][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //X<numbers>.<numbers> or X <numbers>.<numbers>
+std::regex Yregex("[Yy][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Y<numbers>.<numbers> or Y <numbers>.<numbers>
+std::regex Zregex("[Zz][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
+std::regex specialRegex("[SFPsfp][\\s]?[0-9]*[.]?[0-9]*");        //SFP<numbers>.<numbers> or SFP <numbers>.<numbers>
 std::string commentDelimiter = ";";                     //Like assembly, gcode comments are denoted with a ;
 int bufferSize = 255;                                   //Lines cannot be longer than this
 std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
@@ -149,11 +150,13 @@ int shiftElement(int lineno)  {
 int writeLine(int lineno) {
   std::string newLine;
   if(instructionMatrix[lineno].lineno != "") newLine += instructionMatrix[lineno].lineno + " ";                                     //N042
-  newLine += instructionMatrix[lineno].command + " ";                                                                               //N042 G01 (Already checked above!)
+  newLine += instructionMatrix[lineno].command + " ";                                  //N042 G01
   newLine += instructionMatrix[lineno].specialCommand + " ";
-  if(instructionMatrix[lineno].xCoord != NULL) newLine += "X" + std::to_string(instructionMatrix[lineno].xCoord) + " ";             //N042 G01 X0.0525
-  if(instructionMatrix[lineno].yCoord != NULL) newLine += "Y" + std::to_string(instructionMatrix[lineno].yCoord) + " ";            //N042 G01 X0.0525 Y2
-  if(instructionMatrix[lineno].zCoord != NULL) newLine += "Z" + std::to_string(instructionMatrix[lineno].zCoord) + " ";            //N042 G01 X0.0525 Y2 Z-1.25
+  if(instructionMatrix[lineno].command != "") {
+    if(!std::isnan(instructionMatrix[lineno].xCoord)) newLine += "X" + std::to_string(instructionMatrix[lineno].xCoord) + " ";             //N042 G01 X0.0525
+    if(!std::isnan(instructionMatrix[lineno].yCoord)) newLine += "Y" + std::to_string(instructionMatrix[lineno].yCoord) + " ";            //N042 G01 X0.0525 Y2
+    if(!std::isnan(instructionMatrix[lineno].zCoord)) newLine += "Z" + std::to_string(instructionMatrix[lineno].zCoord) + " ";            //N042 G01 X0.0525 Y2 Z-1.25
+  }
   if(instructionMatrix[lineno].comment != "") newLine += instructionMatrix[lineno].comment;
   output << newLine << std::endl;
   return 0;
