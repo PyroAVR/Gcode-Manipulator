@@ -20,13 +20,13 @@ enum {
 //Regular expressions for the various selections needed in order to parse
 //a line of gcode.
 std::regex linenoRegex("N[\\s]?[0-9]+");                        //N<numbers>
-std::regex commandRegex("[GMgm][\\s]?[0-9]+[.]?[0-9]*");         //GM<numbers>.<numbers> or GM <numbers>.<numbers>
+std::regex commandRegex("[Gg][\\s]?[0-9]+[.]?[0-9]*");         //G<numbers>.<numbers> or G <numbers>.<numbers>
 std::regex Xregex("[Xx][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //X<numbers>.<numbers> or X <numbers>.<numbers>
 std::regex Yregex("[Yy][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Y<numbers>.<numbers> or Y <numbers>.<numbers>
 std::regex Zregex("[Zz][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
-std::regex specialRegex("[SFPsfp][\\s]?[0-9]*[.]?[0-9]*");        //SFP<numbers>.<numbers> or SFP <numbers>.<numbers>
+std::regex specialRegex("[SFPMsfpm][\\s]?[0-9]*[.]?[0-9]*");        //SFP<numbers>.<numbers> or SFP <numbers>.<numbers>
 std::string commentDelimiter = ";";                     //Like assembly, gcode comments are denoted with a ;
-int bufferSize = 255;                                   //Lines cannot be longer than this
+int bufferSize = 255;                                   //Lines cannot be longer than this many characters
 std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
 char* inputBuffer = new char[bufferSize];               //Input buffer for one line
 char* outputBuffer = new char[bufferSize];              //Output buffer for one line
@@ -125,6 +125,12 @@ int parseLine(std::string line)  {
   std::regex_search(YmatchString, Ycoord, coordRegex);
   std::regex_search(ZmatchString, Zcoord, coordRegex);
   gInstruction currentLine = {linenoMatch[0], commandMatch[0], specialMatch[0], atof(Xcoord[0].str().c_str()), atof(Ycoord[0].str().c_str()), atof(Zcoord[0].str().c_str()), comment};
+  /* This really, REALLY needs a re-write, but it works for now.  Basically, write in a value, and then check if it was empty to account for atof() returning 0.0 on error.
+   * We write in NaN if the match is blank.
+   */
+  if(Xcoord[0] == "") currentLine.xCoord = std::nan("1");
+  if(Ycoord[0] == "") currentLine.yCoord = std::nan("1");
+  if(Zcoord[0] == "") currentLine.zCoord = std::nan("1");
   instructionMatrix.push_back(currentLine);
   memset(&currentLine, NULL, sizeof(currentLine));
   return 0;
@@ -138,19 +144,18 @@ int shiftElement(int lineno)  {
   * position in that axis.  Therefore, we have to not apply any shifts if there is nothing to shift.
   * To keep the program short, we check if there IS something, and then write, rather than check all
   * possible cases in which there might NOT be something. Efficiency, HAYO!
-  * This also applies to writeLine.  It doesn't have to check for null commands due to this architecture.
   */
   if(instructionMatrix[lineno].command == "") return 0;          //Don't write coords if there isn't a command.
-  if(instructionMatrix[lineno].xCoord != NULL) instructionMatrix[lineno].xCoord = instructionMatrix[lineno].xCoord + Xshift;
-  if(instructionMatrix[lineno].yCoord != NULL) instructionMatrix[lineno].yCoord = instructionMatrix[lineno].yCoord + Yshift;
+  if(!std::isnan(instructionMatrix[lineno].xCoord)) instructionMatrix[lineno].xCoord = instructionMatrix[lineno].xCoord + Xshift;
+  if(!std::isnan(instructionMatrix[lineno].yCoord)) instructionMatrix[lineno].yCoord = instructionMatrix[lineno].yCoord + Yshift;
   instructionMatrix[lineno].zCoord = instructionMatrix[lineno].zCoord + Zshift; //Some transformations are skewed if Z-coordinates not present.
   return 0;
 }
 //Reverse of the parseLine() function, but this is much simpler.
 int writeLine(int lineno) {
   std::string newLine;
-  if(instructionMatrix[lineno].lineno != "") newLine += instructionMatrix[lineno].lineno + " ";                                     //N042
-  newLine += instructionMatrix[lineno].command + " ";                                  //N042 G01
+  if(instructionMatrix[lineno].lineno != "") newLine += instructionMatrix[lineno].lineno + " ";                                              //N042
+  if(instructionMatrix[lineno].command != "") newLine += instructionMatrix[lineno].command + " ";                                           //N042 G01 The empty check is for my sanity.
   newLine += instructionMatrix[lineno].specialCommand + " ";
   if(instructionMatrix[lineno].command != "") {
     if(!std::isnan(instructionMatrix[lineno].xCoord)) newLine += "X" + std::to_string(instructionMatrix[lineno].xCoord) + " ";             //N042 G01 X0.0525
