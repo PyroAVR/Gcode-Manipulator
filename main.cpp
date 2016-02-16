@@ -25,7 +25,7 @@ std::regex Xregex("[Xx][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //X<numbers>.<
 std::regex Yregex("[Yy][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Y<numbers>.<numbers> or Y <numbers>.<numbers>
 std::regex Zregex("[Zz][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
 std::regex specialRegex("[SFPMsfpm][\\s]?[0-9]*[.]?[0-9]*");        //SFP<numbers>.<numbers> or SFP <numbers>.<numbers>
-std::string commentDelimiter = ";";                     //Like assembly, gcode comments are denoted with a ;
+std::regex commentRegex("[\(;]");                                     //comments start with ; or (
 int bufferSize = 255;                                   //Lines cannot be longer than this many characters
 std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
 char* inputBuffer = new char[bufferSize];               //Input buffer for one line
@@ -91,12 +91,13 @@ int parseLine(std::string line)  {
   std::smatch Ymatch;
   std::smatch Zmatch;
   std::smatch specialMatch;
+  std::smatch commentMatch;
   std::string comment;
-  if(line.find(commentDelimiter) <= line.length()) {
-    comment = line.substr(line.find(commentDelimiter), std::string::npos);
-    line = line.substr(0,line.find(commentDelimiter));
+  std::regex_search(line, commentMatch, commentRegex);                          //Comment removal.
+  if(!(commentMatch.size() < 1))  {
+    comment = line.substr(line.find(commentMatch[0].str()), std::string::npos);
+    line = line.substr(0,line.find(commentMatch[0].str()));
   }
-
   std::regex_search(line, linenoMatch, linenoRegex);
   std::regex_search(line, commandMatch, commandRegex);
   std::regex_search(line, specialMatch, specialRegex);
@@ -195,5 +196,4 @@ int main(int argc, char *argv[])  {
   output.close();
   cleanup(_exit_, "Transformation applied!");
   return 0;
-
 }
