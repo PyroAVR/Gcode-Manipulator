@@ -19,13 +19,13 @@ enum {
 } exitCodes;
 //Regular expressions for the various selections needed in order to parse
 //a line of gcode.
-std::regex linenoRegex("N[\\s]?[0-9]+");                        //N<numbers>
-std::regex commandRegex("[Gg][\\s]?[0-9]+[.]?[0-9]*");         //G<numbers>.<numbers> or G <numbers>.<numbers>
+std::regex linenoRegex("N[\\s]?[0-9]+");                          //N<numbers>
+std::regex commandRegex("([Gg][\\s]?[0-9]+[.]?[0-9]*[\\s]?)+");   //G<numbers>.<numbers> or G <numbers>.<numbers> Now supports multiple commands, ie: G91 G01
 std::regex Xregex("[Xx][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //X<numbers>.<numbers> or X <numbers>.<numbers>
 std::regex Yregex("[Yy][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Y<numbers>.<numbers> or Y <numbers>.<numbers>
 std::regex Zregex("[Zz][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
-std::regex specialRegex("[SFPMsfpm][\\s]?[0-9]*[.]?[0-9]*");        //SFP<numbers>.<numbers> or SFP <numbers>.<numbers>
-std::regex commentRegex("[\(;]");                                     //comments start with ; or (
+std::regex specialRegex("[SFPMsfpm][\\s]?[0-9]*[.]?[0-9]*");      //SFP<numbers>.<numbers> or SFP <numbers>.<numbers>
+std::regex commentRegex("[\(;]");                                 //comments start with ; or (
 int bufferSize = 255;                                   //Lines cannot be longer than this many characters
 std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
 char* inputBuffer = new char[bufferSize];               //Input buffer for one line
@@ -95,7 +95,7 @@ int parseLine(std::string line)  {
   std::string comment;
   std::regex_search(line, commentMatch, commentRegex);                          //Comment removal.
   if(!(commentMatch.size() < 1))  {
-    comment = line.substr(line.find(commentMatch[0].str()), std::string::npos);
+    comment = line.substr(line.find(commentMatch[0].str()), line.length());
     line = line.substr(0,line.find(commentMatch[0].str()));
   }
   std::regex_search(line, linenoMatch, linenoRegex);
@@ -104,8 +104,8 @@ int parseLine(std::string line)  {
   std::regex_search(line, Xmatch, Xregex);
   std::regex_search(line, Ymatch, Yregex);
   std::regex_search(line, Zmatch, Zregex);
-  //specials excluded from syntax checker
-  if(linenoMatch.size() > 1 || commandMatch.size() > 1 || Xmatch.size() > 1 || Ymatch.size() > 1 || Zmatch.size() > 1)  {
+  //specials excluded from syntax checker.  Multiple commands can be on one line, ie: G91 G00 <x><y><z>
+  if(linenoMatch.size() > 1 || commandMatch.size() > 2 || Xmatch.size() > 1 || Ymatch.size() > 1 || Zmatch.size() > 1)  {
     cleanup(_crash_, "Something's wrong with the syntax on this line:\n" + line);
   }
   /*
