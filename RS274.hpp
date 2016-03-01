@@ -42,10 +42,12 @@ private:
   std::regex specialRegex = std::regex("[SFPMsfpm][\\s]?[0-9]*[.]?[0-9]*");      //SFP<numbers>.<numbers> or SFP <numbers>.<numbers>
   std::regex commentRegex = std::regex("[\(;]");                                 //comments start with ; or (
   int bufferSize = 255;                                   //Lines cannot be longer than this many characters
+  int linecount = 0;                                      //size of gInstruction vector
   std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
   char* inputBuffer = new char[bufferSize];               //Input buffer for one line
   char* outputBuffer = new char[bufferSize];              //Output buffer for one line
   double  Xshift, Yshift, Zshift;
+  char *inputFile, outputFile;
   std::ifstream input;
   std::ofstream output;
   //A dynamic array to hold our file in.
@@ -53,11 +55,16 @@ private:
   void error(int status, std::string message);
 public:
   RS274();
-  RS274(std::string filename);
+  RS274(std::string input, std::string output);
   int parseLine(std::string line);
+  int parse();
   int parse(std::string &filename);
   int parse(const char* filename);
   int shiftElement(int lineno);
+  int shift();
   int writeLine(int lineno);
+  int write();
+  int write(std::string &filename);
+  int write(const char *filename);
   ~RS274();
 };

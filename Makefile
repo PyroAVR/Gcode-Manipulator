@@ -1,12 +1,15 @@
 #I hate error messages, and NULL is a necessary thing for C++!
 FLAGS = -Wno-null-conversion -Wno-null-arithmetic -std=c++1y
 #It's best to keep this high, as this program does take a while on large files
-OPTIMIZATION = -O3
+OPTIMIZATION 	= -O3
 CXX		= clang++
 
-all:
-	$(CXX) $(FLAGS) $(OPTIMIZATION) main.cpp -o gcmanip
+all: RS274.o
+	$(CXX) $(FLAGS) ooptest.cpp RS274.o
 
 install:
 	cp gcmanip /usr/bin/gcode-manipulator
 	ln -s /usr/bin/gcode-manipulator /usr/bin/gcmanip
+
+%.o: %.cpp
+	$(CXX) -c $(FLAGS) $<

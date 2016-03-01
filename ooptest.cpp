@@ -2,6 +2,7 @@
 using namespace std;
 int main(int argc, char const *argv[]) {
   RS274 g;
-  cout << g.parseLine("G90 Y50 Y20") << endl;
+  g.parse("test.ngc");
+  g.write("out.ngc");
   return 0;
 }

@@ -3,6 +3,10 @@
 RS274::RS274()  {
 
 }
+RS274::RS274(std::string inputFile, std::string outputFile) {
+  input.open(inputFile.c_str(), std::fstream::in);
+  output.open(outputFile.c_str(), std::fstream::out);
+}
 
 void RS274::error(int status, std::string message) {
   if(message == "") {
@@ -74,9 +78,8 @@ int RS274::parseLine(std::string line)  {
   return 0;
 }
 
-int RS274::parse(const char* filename)  {
-  input.open(filename, std::fstream::in);
-  int linecount = 0;
+int RS274::parse()  {
+  if(!input.is_open()) return -1;
   while(! input.eof())  {
     input.getline(inputBuffer, bufferSize, '\n');
     linecount++;
@@ -84,6 +87,13 @@ int RS274::parse(const char* filename)  {
     parseLine(inputBuffer);
     memset(inputBuffer, 0, bufferSize);
   }
+  return 0;
+}
+
+int RS274::parse(const char* filename)  {
+  if(input.is_open()) input.close();
+  input.open(filename, std::fstream::in);
+  parse();
   return 0;
 }
 //Dummy!
@@ -119,8 +129,27 @@ int RS274::writeLine(int lineno)  {
   output << newLine << std::endl;
   return 0;
 }
+int RS274::write()  {
+  if(!output.is_open()) return -1;
+  std::cout << "Input read successfully: " << linecount << " lines parsed." << std::endl;
+  for(int i = 0; i <= linecount; i++) {
+    //std::cout << "[translate] (" << i << "/" << linecount << ") " << (static_cast<float>(i)/static_cast<float>(linecount))*100 << "%"  << std::endl;
+    writeLine(i);
+  }
+  return 0;
+}
+int RS274::write(const char* filename) {
+  if(output.is_open()) output.close();
+  output.open(filename, std::fstream::out);
+  return write();
+}
+int RS274::write(std::string &filename) {
+  return write(filename.c_str());
+}
 
 RS274::~RS274() {
     delete[] inputBuffer;
     delete[] outputBuffer;
+    input.close();
+    output.close();
 }
