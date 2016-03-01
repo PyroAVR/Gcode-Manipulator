@@ -4,15 +4,21 @@ FLAGS = -Wno-null-conversion -Wno-null-arithmetic -std=c++1y
 OPTIMIZATION 	= -O3
 CXX		= clang++
 LIBS_PREFIX	= /usr
-
-all: build install libs-install
+OUTPUT_NAME	= gcode-manipulator
+SHORT_NAME	= gcmanip
+all:
+	make build
+	clear
+	@echo "Enter password to install, or control-C to stop."
+	sudo make install
+	sudo make libs-install
 
 build: RS274.o
 	$(CXX) $(FLAGS) $(OPTIMIZATION) ooptest.cpp RS274.o
 
 install: build
-	cp gcmanip /usr/bin/gcode-manipulator
-	ln -s /usr/bin/gcode-manipulator /usr/bin/gcmanip
+	cp $(OUTPUT_NAME) /usr/bin/$(OUTPUT_NAME)
+	ln -s /usr/bin/$(OUTPUT_NAME) /usr/bin/$(SHORT_NAME)
 
 %.o: %.cpp
 	$(CXX) -c $(FLAGS) $(OPTIMIZATION) $<
@@ -22,6 +28,11 @@ shared:
 
 install-libs: build shared
 	mkdir -p $(LIBS_PREFIX)/include/RS274
-#	mkdir -p $(LIBS_PREFIX)/lib/RS274
 	cp RS274.hpp $(LIBS_PREFIX)/include/RS274/RS274.hpp
 	cp RS274.so $(LIBS_PREFIX)/lib/libRS274.so
+
+help:
+	@echo "Targets:"
+	@echo "build		build everything, do not install to system"
+	@echo "install		build everything and install binaries"
+	@echo "install-libs	build lib and install libraries"
