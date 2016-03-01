@@ -114,6 +114,15 @@ int RS274::shiftElement(int lineno) {
   instructionMatrix[lineno].zCoord = instructionMatrix[lineno].zCoord + Zshift; //Some transformations are skewed if Z-coordinates not present.
   return 0;
 }
+int RS274::shift(double X, double Y, double Z)  {
+  Xshift = X;
+  Yshift = Y;
+  Zshift = Z;
+  for(int i = 0; i < linecount; i++)  {
+    shiftElement(i);
+  }
+  return 0;
+}
 
 int RS274::writeLine(int lineno)  {
   std::string newLine;
@@ -132,7 +141,7 @@ int RS274::writeLine(int lineno)  {
 int RS274::write()  {
   if(!output.is_open()) return -1;
   std::cout << "Input read successfully: " << linecount << " lines parsed." << std::endl;
-  for(int i = 0; i <= linecount; i++) {
+  for(int i = 0; i < linecount; i++) {
     //std::cout << "[translate] (" << i << "/" << linecount << ") " << (static_cast<float>(i)/static_cast<float>(linecount))*100 << "%"  << std::endl;
     writeLine(i);
   }

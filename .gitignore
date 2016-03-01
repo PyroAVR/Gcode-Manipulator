@@ -1,5 +1,7 @@
 gcmanip
 *.ngc
 *.gcode
-.o
-.so
+*.o
+*.so
+*.ll
+*.s

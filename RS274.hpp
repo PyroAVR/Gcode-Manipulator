@@ -61,7 +61,7 @@ public:
   int parse(std::string &filename);
   int parse(const char* filename);
   int shiftElement(int lineno);
-  int shift();
+  int shift(double X, double Y, double Z);
   int writeLine(int lineno);
   int write();
   int write(std::string &filename);
