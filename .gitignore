@@ -5,3 +5,4 @@ gcmanip
 *.so
 *.ll
 *.s
+*.out
