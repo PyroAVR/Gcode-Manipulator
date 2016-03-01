@@ -1,59 +1,10 @@
-/*GCode Manipulator
- *Can shift and transform GCode.
- *Reads lines one at a time from file in order to minimize memory usage.
- *
- */
+#include "RS274.hpp"
 
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <regex>
-#include <vector>
-#include <cstdlib>
-#include <cstring>
-#include <cmath>
+RS274::RS274()  {
 
+}
 
-//Regular expressions for the various selections needed in order to parse
-//a line of gcode.
-std::regex linenoRegex("N[\\s]?[0-9]+");                          //N<numbers>
-std::regex commandRegex("([Gg][\\s]?[0-9]+[.]?[0-9]*[\\s]?)+");   //G<numbers>.<numbers> or G <numbers>.<numbers> Now supports multiple commands, ie: G91 G01
-std::regex Xregex("[Xx][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //X<numbers>.<numbers> or X <numbers>.<numbers>
-std::regex Yregex("[Yy][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Y<numbers>.<numbers> or Y <numbers>.<numbers>
-std::regex Zregex("[Zz][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
-std::regex specialRegex("[SFPMsfpm][\\s]?[0-9]*[.]?[0-9]*");      //SFP<numbers>.<numbers> or SFP <numbers>.<numbers>
-std::regex commentRegex("[\(;]");                                 //comments start with ; or (
-int bufferSize = 255;                                   //Lines cannot be longer than this many characters
-std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
-char* inputBuffer = new char[bufferSize];               //Input buffer for one line
-char* outputBuffer = new char[bufferSize];              //Output buffer for one line
-double  Xshift, Yshift, Zshift;
-std::ifstream input;
-std::ofstream output;
-
-/*This struct defines what a single line of gcode looks like, but it separates
-* some of the things out.
-* To demonstrate:
-* N042 G01 X0.5197 Y52.385 Z-3.32153 ;random comment
-* Turns into:
-* N042 G01 0.5197 52.385 -3.31253 ;random comment
-* This is because we need the numbers to work with, not strings.
-*/
-struct gInstruction {
-  std::string lineno;
-  std::string command;
-  std::string specialCommand;
-  double xCoord;
-  double yCoord;
-  double zCoord;
-  std::string comment;
-};
-
-//A dynamic array to hold our file in.
-std::vector<gInstruction> instructionMatrix;
-
-//Handy for easy crashing and termination.  Takes care of C-allocated resources.
-void cleanup(int status, std::string message = "") {
+void RS274::error(int status, std::string message) {
   if(message == "") {
     delete[] inputBuffer;
     delete[] outputBuffer;
@@ -70,18 +21,7 @@ void cleanup(int status, std::string message = "") {
   delete[] outputBuffer;
 }
 
-/*
-* This is the complicated one. The function takes a single line of gcode
-* as an argument and splits it into many pieces.
-* The first step looks for comments and separates them out, as they can
-* trip up the command search step.
-* The second step searches for commands, G or M commands specifically.
-* The third step searches for coordinates, separates them, strips their
-* designating letter <X, Y, or Z>, and finally,
-* The fourth step initializes a new gInstruction, adds it to the matrix, clears
-* the temporary buffer, and moves returns, waiting for the next line.
-*/
-int parseLine(std::string line)  {
+int RS274::parseLine(std::string line)  {
   std::smatch linenoMatch;
   std::smatch commandMatch;
   std::smatch Xmatch;
@@ -103,7 +43,7 @@ int parseLine(std::string line)  {
   std::regex_search(line, Zmatch, Zregex);
   //specials excluded from syntax checker.  Multiple commands can be on one line, ie: G91 G00 <x><y><z>
   if(linenoMatch.size() > 1 || commandMatch.size() > 2 || Xmatch.size() > 1 || Ymatch.size() > 1 || Zmatch.size() > 1)  {
-    cleanup(_crash_, "Something's wrong with the syntax on this line:\n" + line);
+    error(_crash_, "Something's wrong with the syntax on this line:\n" + line);
   }
   /*
   * Brief explanation of the string-reassignments:
@@ -130,12 +70,27 @@ int parseLine(std::string line)  {
   if(Ycoord[0] == "") currentLine.yCoord = std::nan("1");
   if(Zcoord[0] == "") currentLine.zCoord = std::nan("1");
   instructionMatrix.push_back(currentLine);
-  memset(&currentLine, NULL, sizeof(currentLine));
+  memset(&currentLine, 0, sizeof(currentLine));
   return 0;
 }
 
-//Simple, apply the shifts!
-int shiftElement(int lineno)  {
+int RS274::parse(const char* filename)  {
+  input.open(filename, std::fstream::in);
+  int linecount = 0;
+  while(! input.eof())  {
+    input.getline(inputBuffer, bufferSize, '\n');
+    linecount++;
+    std::cout << "[parse] line " << linecount << std::endl;
+    parseLine(inputBuffer);
+    memset(inputBuffer, 0, bufferSize);
+  }
+  return 0;
+}
+//Dummy!
+int RS274::parse(std::string &filename)  {
+  return RS274::parse(filename.c_str());
+}
+int RS274::shiftElement(int lineno) {
   /*
   * Weird, seemingly unnessary or backwards if statements:
   * Some CAM processors do not write a coordinate at all if there is no change from the previous
@@ -149,8 +104,8 @@ int shiftElement(int lineno)  {
   instructionMatrix[lineno].zCoord = instructionMatrix[lineno].zCoord + Zshift; //Some transformations are skewed if Z-coordinates not present.
   return 0;
 }
-//Reverse of the parseLine() function, but this is much simpler.
-int writeLine(int lineno) {
+
+int RS274::writeLine(int lineno)  {
   std::string newLine;
   if(instructionMatrix[lineno].lineno != "") newLine += instructionMatrix[lineno].lineno + " ";                                              //N042
   if(instructionMatrix[lineno].command != "") newLine += instructionMatrix[lineno].command + " ";                                           //N042 G01 The empty check is for my sanity.
@@ -165,32 +120,7 @@ int writeLine(int lineno) {
   return 0;
 }
 
-
-int main(int argc, char *argv[])  {
-  if(argc < 6)  cleanup(_crash_, "Not enough arguments!\n" + Usage);
-  Xshift = atof(argv[3]);
-  Yshift = atof(argv[4]);
-  Zshift = atof(argv[5]);
-  input.open(argv[1], std::fstream::in);
-  output.open(argv[2], std::fstream::out);
-
-  int linecount = 0;
-  while(! input.eof())  {
-    input.getline(inputBuffer, bufferSize, '\n');
-    linecount++;
-    std::cout << "[parse] line " << linecount << std::endl;
-    parseLine(inputBuffer);
-    memset(inputBuffer, NULL, bufferSize);
-  }
-
-  input.close();
-  std::cout << "Input read successfully: " << linecount << " lines parsed." << std::endl;
-  for(int i = 0; i <= linecount; i++) {
-    std::cout << "[translate] (" << i << "/" << linecount << ") " << (static_cast<float>(i)/static_cast<float>(linecount))*100 << "%"  << std::endl;
-    shiftElement(i);
-    writeLine(i);
-  }
-  output.close();
-  cleanup(_exit_, "Transformation applied!");
-  return 0;
+RS274::~RS274() {
+    delete[] inputBuffer;
+    delete[] outputBuffer;
 }
