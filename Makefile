@@ -14,7 +14,7 @@ all:
 	sudo make libs-install
 
 build: RS274.o
-	$(CXX) $(FLAGS) $(OPTIMIZATION) ooptest.cpp RS274.o
+	$(CXX) $(FLAGS) $(OPTIMIZATION) ooptest.cpp RS274.o -o $(OUTPUT_NAME)
 
 install: build
 	cp $(OUTPUT_NAME) /usr/bin/$(OUTPUT_NAME)
