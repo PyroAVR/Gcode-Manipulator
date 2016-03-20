@@ -28,6 +28,7 @@ struct gInstruction {
   double yCoord;
   double zCoord;
   std::string comment;
+  bool isModal = false;
 };
 
 class RS274 {
@@ -41,6 +42,7 @@ private:
   std::regex Zregex = std::regex("[Zz][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
   std::regex specialRegex = std::regex("[SFPMsfpm][\\s]?[0-9]*[.]?[0-9]*");      //SFP<numbers>.<numbers> or SFP <numbers>.<numbers>
   std::regex commentRegex = std::regex("[\(;]");                                 //comments start with ; or (
+  std::regex modalRegex = std::regex("G0?(([1-3]+)?|([7-8]+)?)\\D|G(33|38\\.[1-3]|73|76|8[0-9])+\\D|G(17|18|19)\\D|G(9[0-28-9])+\\D|G(2[0-1])\\D|G(4[1-3][\\.1]+)\\D|G(4[0-39])|G(59\\.[1-3]?)\\D|G(5[3-9])");
   int bufferSize = 255;                                   //Lines cannot be longer than this many characters
   int linecount = 0;                                      //size of gInstruction vector
   std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
@@ -50,6 +52,7 @@ private:
   char *inputFile, outputFile;
   std::ifstream input;
   std::ofstream output;
+  //std::vector<int> modalDomains;                  //Regions where modal commands are in effect
   //A dynamic array to hold our file in.
   std::vector<gInstruction> instructionMatrix;
   void error(int status, std::string message);
@@ -60,6 +63,7 @@ public:
   int parse();
   int parse(std::string &filename);
   int parse(const char* filename);
+  std::string readElement(int lineno);
   int shiftElement(int lineno);
   int shift(double X, double Y, double Z);
   int writeLine(int lineno);

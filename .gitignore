@@ -7,3 +7,4 @@ gcmanip
 *.s
 *.out
 gcode-manipulator
+tests/read-range

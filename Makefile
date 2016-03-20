@@ -26,13 +26,21 @@ install: build
 shared:
 	$(CXX) -c $(FLAGS) $(OPTIMIZATION) RS274.cpp -o RS274.so
 
-install-libs: build shared
+install-libs: shared
 	mkdir -p $(LIBS_PREFIX)/include/RS274
 	cp RS274.hpp $(LIBS_PREFIX)/include/RS274/RS274.hpp
 	cp RS274.so $(LIBS_PREFIX)/lib/libRS274.so
 
+#failing
+tests: install-libs
+	$(CXX) -lRS274 $(FLAGS) tests/read_range.cpp -o tests/read_range
+
+clean:
+	rm -f *.o *.so
 help:
 	@echo "Targets:"
 	@echo "build		build everything, do not install to system"
 	@echo "install		build everything and install binaries"
 	@echo "install-libs	build lib and install libraries"
+	@echo "tests		build tests"
+	@echo "clean		remove all built files"

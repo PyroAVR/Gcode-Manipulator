@@ -32,6 +32,7 @@ int RS274::parseLine(std::string line)  {
   std::smatch Ymatch;
   std::smatch Zmatch;
   std::smatch specialMatch;
+  std::smatch modalMatch;
   std::smatch commentMatch;
   std::string comment;
   std::regex_search(line, commentMatch, commentRegex);                          //Comment removal.
@@ -41,14 +42,22 @@ int RS274::parseLine(std::string line)  {
   }
   std::regex_search(line, linenoMatch, linenoRegex);
   std::regex_search(line, commandMatch, commandRegex);
+  std::regex_search(line, modalMatch, modalRegex);
   std::regex_search(line, specialMatch, specialRegex);
   std::regex_search(line, Xmatch, Xregex);
   std::regex_search(line, Ymatch, Yregex);
   std::regex_search(line, Zmatch, Zregex);
-  //specials excluded from syntax checker.  Multiple commands can be on one line, ie: G91 G00 <x><y><z>
+  /*//specials excluded from syntax checker.  Multiple commands can be on one line, ie: G91 G00 <x><y><z>
   if(linenoMatch.size() > 1 || commandMatch.size() > 2 || Xmatch.size() > 1 || Ymatch.size() > 1 || Zmatch.size() > 1)  {
     error(_crash_, "Something's wrong with the syntax on this line:\n" + line);
-  }
+  }*/
+  //This block determines if a line is either setting a mode, or part of a previously set mode.
+  bool isCommandModal = false;
+  bool isCommandBlank = false;
+  bool isLineModal = false;
+  (modalMatch[0] != "") ? isCommandModal = true : isCommandModal = false;
+  (commandMatch[0] == "") ? isCommandBlank = true : isCommandBlank = false;
+  isLineModal = isCommandBlank | isCommandModal;
   /*
   * Brief explanation of the string-reassignments:
   * Something fishy is going on in the standard library whereby std::regex_match cannot be called with
@@ -66,7 +75,7 @@ int RS274::parseLine(std::string line)  {
   std::regex_search(XmatchString, Xcoord, coordRegex);
   std::regex_search(YmatchString, Ycoord, coordRegex);
   std::regex_search(ZmatchString, Zcoord, coordRegex);
-  gInstruction currentLine = {linenoMatch[0], commandMatch[0], specialMatch[0], atof(Xcoord[0].str().c_str()), atof(Ycoord[0].str().c_str()), atof(Zcoord[0].str().c_str()), comment};
+  gInstruction currentLine = {linenoMatch[0], commandMatch[0], specialMatch[0], atof(Xcoord[0].str().c_str()), atof(Ycoord[0].str().c_str()), atof(Zcoord[0].str().c_str()), comment, isLineModal};
   /* This really, REALLY needs a re-write, but it works for now.  Basically, write in a value, and then check if it was empty to account for atof() returning 0.0 on error.
    * We write in NaN if the match is blank.
    */
@@ -100,6 +109,16 @@ int RS274::parse(const char* filename)  {
 int RS274::parse(std::string &filename)  {
   return RS274::parse(filename.c_str());
 }
+std::string RS274::readElement(int lineno) {
+  return std::string("Line " + instructionMatrix[lineno].lineno + ": Command/Special : "
+   + instructionMatrix[lineno].command + "/"
+   + instructionMatrix[lineno].specialCommand
+   + " X: " + std::to_string(instructionMatrix[lineno].xCoord)
+   + " Y: " + std::to_string(instructionMatrix[lineno].yCoord)
+   + " Z: " + std::to_string(instructionMatrix[lineno].zCoord)
+   + "Comment: " + instructionMatrix[lineno].comment
+   + "Modal:" + std::to_string(instructionMatrix[lineno].isModal));
+}
 int RS274::shiftElement(int lineno) {
   /*
   * Weird, seemingly unnessary or backwards if statements:
@@ -108,7 +127,7 @@ int RS274::shiftElement(int lineno) {
   * To keep the program short, we check if there IS something, and then write, rather than check all
   * possible cases in which there might NOT be something. Efficiency, HAYO!
   */
-  if(instructionMatrix[lineno].command == "") return 0;          //Don't write coords if there isn't a command.
+  //if(instructionMatrix[lineno].command == "") return 0;          //Don't write coords if there isn't a command.
   if(!std::isnan(instructionMatrix[lineno].xCoord)) instructionMatrix[lineno].xCoord = instructionMatrix[lineno].xCoord + Xshift;
   if(!std::isnan(instructionMatrix[lineno].yCoord)) instructionMatrix[lineno].yCoord = instructionMatrix[lineno].yCoord + Yshift;
   instructionMatrix[lineno].zCoord = instructionMatrix[lineno].zCoord + Zshift; //Some transformations are skewed if Z-coordinates not present.
@@ -125,11 +144,13 @@ int RS274::shift(double X, double Y, double Z)  {
 }
 
 int RS274::writeLine(int lineno)  {
+  static bool isModal = false;
   std::string newLine;
+  //(instructionMatrix[lineno].isModal|| instructionMatrix[lineno].command == "") ? isModal = true : isModal = false;
   if(instructionMatrix[lineno].lineno != "") newLine += instructionMatrix[lineno].lineno + " ";                                              //N042
-  if(instructionMatrix[lineno].command != "") newLine += instructionMatrix[lineno].command + " ";                                           //N042 G01 The empty check is for my sanity.
   newLine += instructionMatrix[lineno].specialCommand + " ";
-  if(instructionMatrix[lineno].command != "") {
+  if(instructionMatrix[lineno].isModal) {                        //N042 G01 The empty check is for my sanity.
+    newLine += instructionMatrix[lineno].command + " ";
     if(!std::isnan(instructionMatrix[lineno].xCoord)) newLine += "X" + std::to_string(instructionMatrix[lineno].xCoord) + " ";             //N042 G01 X0.0525
     if(!std::isnan(instructionMatrix[lineno].yCoord)) newLine += "Y" + std::to_string(instructionMatrix[lineno].yCoord) + " ";            //N042 G01 X0.0525 Y2
     if(!std::isnan(instructionMatrix[lineno].zCoord)) newLine += "Z" + std::to_string(instructionMatrix[lineno].zCoord) + " ";            //N042 G01 X0.0525 Y2 Z-1.25
