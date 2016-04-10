@@ -29,6 +29,7 @@ struct gInstruction {
   double zCoord;
   std::string comment;
   bool isModal = false;
+  bool isMotion = false;
 };
 
 class RS274 {
@@ -42,7 +43,8 @@ private:
   std::regex Zregex = std::regex("[Zz][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
   std::regex specialRegex = std::regex("[SFPMsfpm][\\s]?[0-9]*[.]?[0-9]*");      //SFP<numbers>.<numbers> or SFP <numbers>.<numbers>
   std::regex commentRegex = std::regex("[\(;]");                                 //comments start with ; or (
-  std::regex modalRegex = std::regex("G0?(([1-3]+)?|([7-8]+)?)\\D|G(33|38\\.[1-3]|73|76|8[0-9])+\\D|G(17|18|19)\\D|G(9[0-28-9])+\\D|G(2[0-1])\\D|G(4[1-3][\\.1]+)\\D|G(4[0-39])|G(59\\.[1-3]?)\\D|G(5[3-9])");
+  std::regex modalRegex = std::regex("G0?(([1-3]+)?|([7-8]+)?)\\D|G(33|38\\.[1-3]|73|76|8[0-9])+\\D|G(17|18|19)\\D|G(9[0-28-9])+\\D|G(2[0-1])\\D|G(4[1-3][\\.1]+)\\D|G(4[0-39])|G(59\\.[1-3]?)\\D|G(5[3-9])", std::regex::icase);
+  std::regex motionRegex = std::regex("(G38\\.[2-5])|(G0?5\\.[1-2]?)|(G0?[1-5]?)", std::regex::icase);
   int bufferSize = 255;                                   //Lines cannot be longer than this many characters
   int linecount = 0;                                      //size of gInstruction vector
   std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
@@ -70,5 +72,6 @@ public:
   int write();
   int write(std::string &filename);
   int write(const char *filename);
+  std::vector<gInstruction> getInstructionMatrix();
   ~RS274();
 };

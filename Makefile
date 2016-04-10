@@ -32,8 +32,8 @@ install-libs: shared
 	cp RS274.so $(LIBS_PREFIX)/lib/libRS274.so
 
 #failing
-tests: install-libs
-	$(CXX) -lRS274 $(FLAGS) tests/read_range.cpp -o tests/read_range
+tests: build
+	$(CXX) $(FLAGS) RS274.o tests/read_range.cpp -o tests/read_range
 
 clean:
 	rm -f *.o *.so

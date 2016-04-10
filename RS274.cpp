@@ -33,6 +33,7 @@ int RS274::parseLine(std::string line)  {
   std::smatch Zmatch;
   std::smatch specialMatch;
   std::smatch modalMatch;
+  std::smatch motionMatch;
   std::smatch commentMatch;
   std::string comment;
   std::regex_search(line, commentMatch, commentRegex);                          //Comment removal.
@@ -43,6 +44,7 @@ int RS274::parseLine(std::string line)  {
   std::regex_search(line, linenoMatch, linenoRegex);
   std::regex_search(line, commandMatch, commandRegex);
   std::regex_search(line, modalMatch, modalRegex);
+  std::regex_search(line, motionMatch, motionRegex);
   std::regex_search(line, specialMatch, specialRegex);
   std::regex_search(line, Xmatch, Xregex);
   std::regex_search(line, Ymatch, Yregex);
@@ -52,12 +54,48 @@ int RS274::parseLine(std::string line)  {
     error(_crash_, "Something's wrong with the syntax on this line:\n" + line);
   }*/
   //This block determines if a line is either setting a mode, or part of a previously set mode.
+  //chances are, this needs some work
+
   bool isCommandModal = false;
   bool isCommandBlank = false;
   bool isLineModal = false;
   (modalMatch[0] != "") ? isCommandModal = true : isCommandModal = false;
   (commandMatch[0] == "") ? isCommandBlank = true : isCommandBlank = false;
-  isLineModal = isCommandBlank | isCommandModal;
+
+  static bool isModalBlock = false;
+  static int modalBlockLine;
+  //need at least one previous line, not currently in a block, prev. command is not blank, then starting a new block
+  //&& !isModalBlock && instructionMatrix.end()->command != ""
+  //modalBlockLine = instructionMatrix.size(); //tricky way of getting the element number
+  //if this is the first line
+/*  if(instructionMatrix.size() == 0 )  {
+     (modalMatch[0] != "") ? isModalBlock = true : isModalBlock = false;
+  }*/
+  //if not in a block
+  if(!isModalBlock) {
+    (modalMatch[0] != "") ? isModalBlock = true : isModalBlock = false;
+  }
+  //if no command, assume still in block
+  if(isModalBlock)  {
+    (commandMatch[0] == "") ? isModalBlock = true : (modalMatch[0] != "") ? isModalBlock = true : isModalBlock = false;
+  }
+  /*//need at least one previous line, currently in a block, command is not blank
+  if(instructionMatrix.size() > 0 && isModalBlock && instructionMatrix.end()->command != "") {
+    isModalBlock = false;
+  }*/
+
+  //isLineModal = (isCommandBlank & isModalBlock) | isCommandModal;
+  isLineModal = isModalBlock;
+
+  std::cout << "In Modal Block: " << isModalBlock << std::endl;
+  bool isMotion = false;
+  static bool isMotionBlock;
+  //if a motion command was found
+  (motionMatch[0] != "") ? isMotion = true : isMotion = false;
+  //if this line is modal
+  (isLineModal) ? isMotionBlock = true : isMotionBlock = false;
+  //line either specifies a modal motion, or is in a block
+  isMotion = isLineModal | isMotion;
   /*
   * Brief explanation of the string-reassignments:
   * Something fishy is going on in the standard library whereby std::regex_match cannot be called with
@@ -75,7 +113,7 @@ int RS274::parseLine(std::string line)  {
   std::regex_search(XmatchString, Xcoord, coordRegex);
   std::regex_search(YmatchString, Ycoord, coordRegex);
   std::regex_search(ZmatchString, Zcoord, coordRegex);
-  gInstruction currentLine = {linenoMatch[0], commandMatch[0], specialMatch[0], atof(Xcoord[0].str().c_str()), atof(Ycoord[0].str().c_str()), atof(Zcoord[0].str().c_str()), comment, isLineModal};
+  gInstruction currentLine = {linenoMatch[0], commandMatch[0], specialMatch[0], atof(Xcoord[0].str().c_str()), atof(Ycoord[0].str().c_str()), atof(Zcoord[0].str().c_str()), comment, isLineModal, isMotion};
   /* This really, REALLY needs a re-write, but it works for now.  Basically, write in a value, and then check if it was empty to account for atof() returning 0.0 on error.
    * We write in NaN if the match is blank.
    */
@@ -117,7 +155,8 @@ std::string RS274::readElement(int lineno) {
    + " Y: " + std::to_string(instructionMatrix[lineno].yCoord)
    + " Z: " + std::to_string(instructionMatrix[lineno].zCoord)
    + "Comment: " + instructionMatrix[lineno].comment
-   + "Modal:" + std::to_string(instructionMatrix[lineno].isModal));
+   + "Modal:" + std::to_string(instructionMatrix[lineno].isModal)
+   + "Motion:" + std::to_string(instructionMatrix[lineno].isMotion));
 }
 int RS274::shiftElement(int lineno) {
   /*
@@ -146,11 +185,12 @@ int RS274::shift(double X, double Y, double Z)  {
 int RS274::writeLine(int lineno)  {
   static bool isModal = false;
   std::string newLine;
-  //(instructionMatrix[lineno].isModal|| instructionMatrix[lineno].command == "") ? isModal = true : isModal = false;
   if(instructionMatrix[lineno].lineno != "") newLine += instructionMatrix[lineno].lineno + " ";                                              //N042
-  newLine += instructionMatrix[lineno].specialCommand + " ";
+  //If not modal and special command, write sp command and return, else write command, special, continue
+  if(!instructionMatrix[lineno].isModal) newLine += instructionMatrix[lineno].specialCommand + " ";
   if(instructionMatrix[lineno].isModal) {                        //N042 G01 The empty check is for my sanity.
     newLine += instructionMatrix[lineno].command + " ";
+    newLine += instructionMatrix[lineno].specialCommand + " ";
     if(!std::isnan(instructionMatrix[lineno].xCoord)) newLine += "X" + std::to_string(instructionMatrix[lineno].xCoord) + " ";             //N042 G01 X0.0525
     if(!std::isnan(instructionMatrix[lineno].yCoord)) newLine += "Y" + std::to_string(instructionMatrix[lineno].yCoord) + " ";            //N042 G01 X0.0525 Y2
     if(!std::isnan(instructionMatrix[lineno].zCoord)) newLine += "Z" + std::to_string(instructionMatrix[lineno].zCoord) + " ";            //N042 G01 X0.0525 Y2 Z-1.25
@@ -176,7 +216,9 @@ int RS274::write(const char* filename) {
 int RS274::write(std::string &filename) {
   return write(filename.c_str());
 }
-
+std::vector<gInstruction> RS274::getInstructionMatrix()  {
+  return instructionMatrix;
+}
 RS274::~RS274() {
     delete[] inputBuffer;
     delete[] outputBuffer;
