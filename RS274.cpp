@@ -64,30 +64,12 @@ int RS274::parseLine(std::string line)  {
 
   static bool isModalBlock = false;
   static int modalBlockLine;
-  //need at least one previous line, not currently in a block, prev. command is not blank, then starting a new block
-  //&& !isModalBlock && instructionMatrix.end()->command != ""
-  //modalBlockLine = instructionMatrix.size(); //tricky way of getting the element number
-  //if this is the first line
-/*  if(instructionMatrix.size() == 0 )  {
-     (modalMatch[0] != "") ? isModalBlock = true : isModalBlock = false;
-  }*/
-  //if not in a block
-  if(!isModalBlock) {
-    (modalMatch[0] != "") ? isModalBlock = true : isModalBlock = false;
-  }
-  //if no command, assume still in block
-  if(isModalBlock)  {
-    (commandMatch[0] == "") ? isModalBlock = true : (modalMatch[0] != "") ? isModalBlock = true : isModalBlock = false;
-  }
-  /*//need at least one previous line, currently in a block, command is not blank
-  if(instructionMatrix.size() > 0 && isModalBlock && instructionMatrix.end()->command != "") {
-    isModalBlock = false;
-  }*/
 
-  //isLineModal = (isCommandBlank & isModalBlock) | isCommandModal;
+  if(!isModalBlock) (modalMatch[0] != "") ? isModalBlock = true : isModalBlock = false;
+  //if no command, assume still in block
+  if(isModalBlock)  (commandMatch[0] == "") ? isModalBlock = true : (modalMatch[0] != "") ? isModalBlock = true : isModalBlock = false;
   isLineModal = isModalBlock;
 
-  std::cout << "In Modal Block: " << isModalBlock << std::endl;
   bool isMotion = false;
   static bool isMotionBlock;
   //if a motion command was found
