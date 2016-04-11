@@ -70,14 +70,14 @@ int RS274::parseLine(std::string line)  {
   if(isModalBlock)  (commandMatch[0] == "") ? isModalBlock = true : (modalMatch[0] != "") ? isModalBlock = true : isModalBlock = false;
   isLineModal = isModalBlock;
 
+  bool isCommandMotion = false;
   bool isMotion = false;
   static bool isMotionBlock;
   //if a motion command was found
-  (motionMatch[0] != "") ? isMotion = true : isMotion = false;
-  //if this line is modal
-  (isLineModal) ? isMotionBlock = true : isMotionBlock = false;
-  //line either specifies a modal motion, or is in a block
-  isMotion = isLineModal | isMotion;
+  (motionMatch[0] != "") ? isCommandMotion = true : isCommandMotion = false;
+  //if the command is modal and motion, we're starting a block
+  (isLineModal & isCommandMotion) ? isMotionBlock = true : (isLineModal | motionMatch[0] == "") ? isMotionBlock = true : isMotionBlock = false;
+  isMotion = isMotionBlock;
   /*
   * Brief explanation of the string-reassignments:
   * Something fishy is going on in the standard library whereby std::regex_match cannot be called with
