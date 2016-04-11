@@ -6,12 +6,7 @@ CXX		= clang++
 LIBS_PREFIX	= /usr
 OUTPUT_NAME	= gcode-manipulator
 SHORT_NAME	= gcmanip
-all:
-	make build
-	clear
-	@echo "Enter password to install, or control-C to stop."
-	sudo make install
-	sudo make libs-install
+all: build
 
 build: RS274.o
 	$(CXX) $(FLAGS) $(OPTIMIZATION) main.cpp RS274.o -o $(OUTPUT_NAME)
