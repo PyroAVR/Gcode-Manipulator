@@ -32,6 +32,12 @@ struct gInstruction {
   bool isMotion = false;
 };
 
+struct threadWorkerData {
+  std::vector<gInstruction> instructionMatrix;
+  std::vector<std::string> lines;
+};
+//send help, I don't know what I'm doing
+
 class RS274 {
 private:
   //Regular expressions for the various selections needed in order to parse
@@ -65,6 +71,7 @@ public:
   int parse();
   int parse(std::string &filename);
   int parse(const char* filename);
+  int parseRange(int start, int end);
   std::string readElement(int lineno);
   int shiftElement(int lineno);
   int shift(double X, double Y, double Z);
@@ -73,5 +80,6 @@ public:
   int write(std::string &filename);
   int write(const char *filename);
   std::vector<gInstruction> getInstructionMatrix();
+  int size();
   ~RS274();
 };

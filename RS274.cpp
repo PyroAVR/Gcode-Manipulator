@@ -129,6 +129,19 @@ int RS274::parse(const char* filename)  {
 int RS274::parse(std::string &filename)  {
   return RS274::parse(filename.c_str());
 }
+int RS274::parseRange(const int start, const int end) {
+  if(!input.is_open()) return -1;
+  if(start > end) return -1;
+  for(int i = start; i <= end; i++) {
+    if(input.eof()) break;
+    input.getline(inputBuffer, bufferSize, '\n');
+    linecount++;
+    std::cout << "[parse] line " << linecount << std::endl;
+    parseLine(inputBuffer);
+    memset(inputBuffer, 0, bufferSize);
+  }
+  return end - linecount;
+}
 std::string RS274::readElement(int lineno) {
   return std::string("Line " + instructionMatrix[lineno].lineno + ": Command/Special : "
    + instructionMatrix[lineno].command + "/"
@@ -200,6 +213,9 @@ int RS274::write(std::string &filename) {
 }
 std::vector<gInstruction> RS274::getInstructionMatrix()  {
   return instructionMatrix;
+}
+int RS274::size() {
+  return linecount;
 }
 RS274::~RS274() {
     delete[] inputBuffer;

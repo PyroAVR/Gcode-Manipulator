@@ -1,7 +1,7 @@
-#I hate error messages, and NULL is a necessary thing for C++!
-FLAGS = -Wno-null-conversion -Wno-null-arithmetic -std=c++1y
+FLAGS = -std=c++1y
+LIBS = -lpthread
 #It's best to keep this high, as this program does take a while on large files
-OPTIMIZATION 	= -O3
+OPTIMIZATION 	= -O3 -g
 CXX		= clang++
 LIBS_PREFIX	= /usr
 OUTPUT_NAME	= gcode-manipulator
@@ -9,17 +9,17 @@ SHORT_NAME	= gcmanip
 all: build
 
 build: RS274.o
-	$(CXX) $(FLAGS) $(OPTIMIZATION) main.cpp RS274.o -o $(OUTPUT_NAME)
+	$(CXX) $(FLAGS) $(LIBS) $(OPTIMIZATION) main.cpp RS274.o -o $(OUTPUT_NAME)
 
 install: build
 	cp $(OUTPUT_NAME) /usr/bin/$(OUTPUT_NAME)
 	ln -s /usr/bin/$(OUTPUT_NAME) /usr/bin/$(SHORT_NAME)
 
 %.o: %.cpp
-	$(CXX) -c $(FLAGS) $(OPTIMIZATION) $<
+	$(CXX) -c $(FLAGS) $(LIBS) $(OPTIMIZATION) $<
 
 shared:
-	$(CXX) -c $(FLAGS) $(OPTIMIZATION) RS274.cpp -o RS274.so
+	$(CXX) -c $(FLAGS) $(LIBS) $(OPTIMIZATION) RS274.cpp -o RS274.so
 
 install-libs: shared
 	mkdir -p $(LIBS_PREFIX)/include/RS274
@@ -28,10 +28,10 @@ install-libs: shared
 
 #failing
 tests: build
-	$(CXX) $(FLAGS) RS274.o tests/read_range.cpp -o tests/read_range
+	$(CXX) $(FLAGS) $(LIBS) $(OPTIMIZATION) RS274.o tests/read_range.cpp -o tests/read_range
 
 clean:
-	rm -f *.o *.so
+	rm -f *.o *.so tests/read_range
 help:
 	@echo "Targets:"
 	@echo "build		build everything, do not install to system"
