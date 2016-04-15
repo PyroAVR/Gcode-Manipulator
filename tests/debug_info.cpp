@@ -20,14 +20,5 @@ int main(int argc, char* argv[])  {
     std::cout << "Usage: " << argv[0] << " <input> " << std::endl;
     return 0;
   }
-  RS274 *g = new RS274(std::string(argv[1]), "");
-  std::cout << g->prepareThreadWorkers() << std::endl;
-  threadWorkerData t;
-  for(int i = 1; i <=4; i++)  {
-  t = g->getThreadWorkerInstance(i);
-  //for(auto a : t.lines) std::cout << a << std::endl;
-  std::cout << t.size << std::endl;
-  //std::cout << t.id << std::endl;
-}
   return 0;
 }

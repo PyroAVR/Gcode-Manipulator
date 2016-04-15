@@ -21,6 +21,7 @@ enum {
 * N042 G01 0.5197 52.385 -3.31253 ;random comment
 * This is because we need the numbers to work with, not strings.
 */
+//std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
 struct gInstruction {
   std::string lineno;
   std::string command;
@@ -39,23 +40,46 @@ struct threadWorkerData {
   std::vector<std::string> lines;
   std::vector<gInstruction> instructionMatrix;
 };
-//send help, I don't know what I'm doing
+
+class RS274Tokenizer  {
+private:
+    //Regular expressions for the various selections needed in order to parse
+    //a line of gcode.
+    std::regex linenoRegex = std::regex("N[\\s]?[0-9]+", std::regex::icase);                          //N<numbers>
+    std::regex commandRegex = std::regex("([Gg][\\s]?[0-9]+[.]?[0-9]*[\\s]?)+", std::regex::icase);   //G<numbers>.<numbers> or G <numbers>.<numbers> Now supports multiple commands, ie: G91 G01
+    std::regex Xregex = std::regex("X[\\s]?[\\+-]?[0-9]*[.]?[0-9]*", std::regex::icase);           //X<numbers>.<numbers> or X <numbers>.<numbers>
+    std::regex Yregex = std::regex("Y[\\s]?[\\+-]?[0-9]*[.]?[0-9]*", std::regex::icase);           //Y<numbers>.<numbers> or Y <numbers>.<numbers>
+    std::regex Zregex = std::regex("Z[\\s]?[\\+-]?[0-9]*[.]?[0-9]*", std::regex::icase);           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
+    std::regex specialRegex = std::regex("[SFPMT][\\s]?[0-9]*[.]?[0-9]*", std::regex::icase);      //SFP<numbers>.<numbers> or SFP <numbers>.<numbers>
+    std::regex commentRegex = std::regex("[\(;]");                                 //comments start with ; or (
+    std::regex modalRegex = std::regex("G0?(([1-3]+)?|([7-8]+)?)\\D|G(33|38\\.[1-3]|73|76|8[0-9])+\\D|G(17|18|19)\\D|G(9[0-28-9])+\\D|G(2[0-1])\\D|G(4[1-3][\\.1]+)\\D|G(4[0-39])|G(59\\.[1-3]?)\\D|G(5[3-9])", std::regex::icase);
+    std::regex motionRegex = std::regex("(G38\\.[2-5])|(G0?5\\.[1-2])|(G0?[1-35]?)", std::regex::icase);
+public:
+  RS274Tokenizer();
+  gInstruction parseLine(std::string line);
+  ~RS274Tokenizer();
+};
+
+class RS274Worker  {
+private:
+  RS274Tokenizer rt;
+  threadWorkerData twd;
+public:
+  RS274Worker(int id);
+  RS274Worker(threadWorkerData _twd);
+  RS274Worker(int id, std::vector<std::string> _lines);
+  int parseRange(int start, int end);
+  int run();
+  threadWorkerData getParsedData();
+
+};
 
 class RS274 {
 private:
-  //Regular expressions for the various selections needed in order to parse
-  //a line of gcode.
-  std::regex linenoRegex = std::regex("N[\\s]?[0-9]+");                          //N<numbers>
-  std::regex commandRegex = std::regex("([Gg][\\s]?[0-9]+[.]?[0-9]*[\\s]?)+");   //G<numbers>.<numbers> or G <numbers>.<numbers> Now supports multiple commands, ie: G91 G01
-  std::regex Xregex = std::regex("[Xx][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //X<numbers>.<numbers> or X <numbers>.<numbers>
-  std::regex Yregex = std::regex("[Yy][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Y<numbers>.<numbers> or Y <numbers>.<numbers>
-  std::regex Zregex = std::regex("[Zz][\\s]?[\\+-]?[0-9]*[.]?[0-9]*");           //Z<numbers>.<numbers> or Z <numbers>.<numbers>
-  std::regex specialRegex = std::regex("[SFPMTsfpmt][\\s]?[0-9]*[.]?[0-9]*");      //SFP<numbers>.<numbers> or SFP <numbers>.<numbers>
-  std::regex commentRegex = std::regex("[\(;]");                                 //comments start with ; or (
-  std::regex modalRegex = std::regex("G0?(([1-3]+)?|([7-8]+)?)\\D|G(33|38\\.[1-3]|73|76|8[0-9])+\\D|G(17|18|19)\\D|G(9[0-28-9])+\\D|G(2[0-1])\\D|G(4[1-3][\\.1]+)\\D|G(4[0-39])|G(59\\.[1-3]?)\\D|G(5[3-9])", std::regex::icase);
-  std::regex motionRegex = std::regex("(G38\\.[2-5])|(G0?5\\.[1-2])|(G0?[1-35]?)", std::regex::icase);
-  int bufferSize = 255;                                   //Lines cannot be longer than this many characters
-  int linecount = 0;                                      //size of gInstruction vector
+  std::vector<RS274Worker> tws;
+  std::vector<threadWorkerData> twds;
+  std::vector<std::thread> threads;
+  std::vector<std::string> linestoparse;
   std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
   char* inputBuffer = new char[bufferSize];               //Input buffer for one line
   char* outputBuffer = new char[bufferSize];              //Output buffer for one line
@@ -63,15 +87,13 @@ private:
   char *inputFile, outputFile;
   std::ifstream input;
   std::ofstream output;
-  //std::vector<int> modalDomains;                  //Regions where modal commands are in effect
-  //A dynamic array to hold our file in.
-  std::vector<gInstruction> instructionMatrix;
-  std::vector<threadWorkerData> threadDataBlocks;
   int hardwarethreads;
-  void error(int status, std::string message);
+  int jobs;
+  int bufferSize = 255;
+  void runWorker(RS274Worker w);
 public:
   RS274();
-  RS274(std::string input, std::string output);
+  RS274(std::string inputFile, std::string outputFile);
   int parseLine(std::string line);
   int parse();
   int parse(std::string &filename);
@@ -86,10 +108,5 @@ public:
   int write(const char *filename);
   std::vector<gInstruction> getInstructionMatrix();
   int size();
-  int prepareThreadWorkers();
-  int prepareThreadWorkers(std::string &filename);
-  int prepareThreadWorkers(const char* filename);
-  threadWorkerData getThreadWorkerInstance(int id);
-  int destroyThreads();
   ~RS274();
 };
