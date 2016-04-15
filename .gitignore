@@ -8,3 +8,4 @@ gcmanip
 *.out
 gcode-manipulator
 tests/read_range
+tests/debug_info

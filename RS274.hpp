@@ -3,6 +3,7 @@
 #include <fstream>
 #include <regex>
 #include <vector>
+#include <thread>
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
@@ -33,8 +34,10 @@ struct gInstruction {
 };
 
 struct threadWorkerData {
-  std::vector<gInstruction> instructionMatrix;
+  int id;
+  int size;
   std::vector<std::string> lines;
+  std::vector<gInstruction> instructionMatrix;
 };
 //send help, I don't know what I'm doing
 
@@ -63,6 +66,8 @@ private:
   //std::vector<int> modalDomains;                  //Regions where modal commands are in effect
   //A dynamic array to hold our file in.
   std::vector<gInstruction> instructionMatrix;
+  std::vector<threadWorkerData> threadDataBlocks;
+  int hardwarethreads;
   void error(int status, std::string message);
 public:
   RS274();
@@ -81,5 +86,10 @@ public:
   int write(const char *filename);
   std::vector<gInstruction> getInstructionMatrix();
   int size();
+  int prepareThreadWorkers();
+  int prepareThreadWorkers(std::string &filename);
+  int prepareThreadWorkers(const char* filename);
+  threadWorkerData getThreadWorkerInstance(int id);
+  int destroyThreads();
   ~RS274();
 };

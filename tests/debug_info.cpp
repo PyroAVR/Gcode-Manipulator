@@ -15,21 +15,19 @@ void rangeParseThread(RS274* g, int start, int end, int& finished) {
 }
 
 
-
 int main(int argc, char* argv[])  {
-  if (argc < 3) {
-    std::cout << "Usage: " << argv[0] << " <input> <lineno1> <lineno2>" << std::endl;
+  if (argc < 2) {
+    std::cout << "Usage: " << argv[0] << " <input> " << std::endl;
     return 0;
   }
   RS274 *g = new RS274(std::string(argv[1]), "");
   std::cout << g->prepareThreadWorkers() << std::endl;
-  std::vector<threadWorkerData> t;
+  threadWorkerData t;
   for(int i = 1; i <=4; i++)  {
-    t.push_back(g->getThreadWorkerInstance(i));
-    //for(auto a : t.lines) std::cout << a << std::endl;
-    std::cout << t.end()->size << std::endl;
-    //std::cout << t.id << std::endl;
-  }
-
+  t = g->getThreadWorkerInstance(i);
+  //for(auto a : t.lines) std::cout << a << std::endl;
+  std::cout << t.size << std::endl;
+  //std::cout << t.id << std::endl;
+}
   return 0;
 }

@@ -6,6 +6,7 @@ RS274::RS274()  {
 RS274::RS274(std::string inputFile, std::string outputFile) {
   input.open(inputFile.c_str(), std::fstream::in);
   output.open(outputFile.c_str(), std::fstream::out);
+  hardwarethreads = std::thread::hardware_concurrency();
 }
 
 void RS274::error(int status, std::string message) {
@@ -217,9 +218,66 @@ std::vector<gInstruction> RS274::getInstructionMatrix()  {
 int RS274::size() {
   return linecount;
 }
+int RS274::prepareThreadWorkers() {
+  std::vector<std::string> lines;
+  while(!input.eof()) {
+    input.getline(inputBuffer, bufferSize, '\n');
+    linecount++;
+    lines.push_back(inputBuffer);
+  }
+  int blockSize = linecount/hardwarethreads;
+  int numjobs = hardwarethreads;
+  if(linecount < blockSize) numjobs = 1;
+  //std::move??
+  //also what the hell is all this iterator crap
+  std::vector<std::string>::iterator separator = lines.begin();
+  separator += blockSize;
+  threadWorkerData t;
+  t.id = 0;
+  t.size = blockSize;
+  std::copy(lines.begin(), separator, back_inserter(t.lines));
+  threadDataBlocks.push_back(t);
+  if(numjobs > 1) {
+    for(int i = 1; i < hardwarethreads -1; i++) {
+        separator++;
+        threadWorkerData t;
+        t.id = i;
+        t.size = blockSize;
+        std::copy(separator, separator + blockSize, back_inserter(t.lines));
+        separator += blockSize;
+        threadDataBlocks.push_back(t);
+    }
+    //ensure that all lines are fed to the threads
+    threadWorkerData t;
+    t.id = (threadDataBlocks.end()->id + 1);
+    std::copy(separator, lines.end(), back_inserter(t.lines));
+    t.size = t.lines.size();
+    threadDataBlocks.push_back(t);
+  }
+  return numjobs;
+}
+int RS274::prepareThreadWorkers(std::string& filename)  {
+  if(input.is_open()) input.close();
+  input.open(filename.c_str(), std::fstream::in);
+  return prepareThreadWorkers();
+}
+int RS274::prepareThreadWorkers(const char* filename) {
+  if(input.is_open()) input.close();
+  input.open(filename, std::fstream::in);
+  return prepareThreadWorkers();
+}
+threadWorkerData RS274::getThreadWorkerInstance(int id)  {
+  return threadDataBlocks[id - 1];
+}
+int RS274::destroyThreads() {
+  //uhhhhhhhh
+  //delete thread instances too;
+  return 0;
+}
 RS274::~RS274() {
     delete[] inputBuffer;
     delete[] outputBuffer;
+    destroyThreads();
     input.close();
     output.close();
 }

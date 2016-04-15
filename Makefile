@@ -29,7 +29,7 @@ install-libs: shared
 #failing
 tests: build
 	$(CXX) $(FLAGS) $(LIBS) $(OPTIMIZATION) RS274.o tests/read_range.cpp -o tests/read_range
-
+	$(CXX) $(FLAGS) $(LIBS) $(OPTIMIZATION) RS274.o tests/debug_info.cpp -o tests/debug_info
 clean:
 	rm -f *.o *.so tests/read_range
 help:
