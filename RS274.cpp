@@ -102,7 +102,6 @@ int RS274Worker::parseRange(int start, int end)  {
   if(start > end) return -1;
   setStatus(_working_);
   for(int i = start; i < end; i++) {
-    //std::cout << twd.lines[i] << std::endl;
     twd.instructionMatrix.push_back(rt.parseLine(twd.lines[i]));
   }
   twd.size = twd.instructionMatrix.size();
@@ -134,7 +133,6 @@ RS274::RS274(std::string inputFile, std::string outputFile) {
   hardwarethreads = std::thread::hardware_concurrency();
   while(!input.eof()) {
     input.getline(inputBuffer, bufferSize, '\n');
-    std::cout << inputBuffer << std::endl;
     linestoparse.push_back(std::string(inputBuffer));
   }
   //this should be adjustable by the user
@@ -185,7 +183,6 @@ void RS274::runWorker(RS274Worker& w) {
 int RS274::run()  {
   start = std::chrono::system_clock::now();
   for(int i = 0; i < workerthreads.size(); i++) {
-    std::cout << i << std::endl;
     workerthreads[i].detach();
   }
   bool isFinished = false;
@@ -267,6 +264,13 @@ int RS274::write(const char* filename)  {
 }
 int RS274::write(std::string &filename) {
   return write(filename.c_str());
+}
+int RS274::write()	{
+  if(!output.is_open()) return -1;
+  for(int i = 0; i < linecount; i++)	{
+    writeLine(i);
+  }
+  return 0;
 }
 std::vector<gInstruction> RS274::getInstructionMatrix()  {
   return instructionMatrix;
