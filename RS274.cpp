@@ -279,5 +279,9 @@ int RS274::size() {
   return linecount;
 }
 RS274::~RS274() {
-
+  delete[] inputBuffer;
+  delete[] outputBuffer;
+  twds.clear();
+  input.close();
+  output.close();
 }
