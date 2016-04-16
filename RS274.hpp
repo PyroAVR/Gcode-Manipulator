@@ -4,6 +4,7 @@
 #include <regex>
 #include <vector>
 #include <thread>
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
@@ -12,7 +13,11 @@ enum {
   _crash_,
   _exit_
 } exitCodes;
-
+enum {
+  _stop_,
+  _working_,
+  _done_
+} statusCodes;
 /*This struct defines what a single line of gcode looks like, but it separates
 * some of the things out.
 * To demonstrate:
@@ -64,22 +69,28 @@ class RS274Worker  {
 private:
   RS274Tokenizer rt;
   threadWorkerData twd;
+  int status = _stop_;
+  int setStatus(int s);
 public:
   RS274Worker(int id);
   RS274Worker(threadWorkerData _twd);
   RS274Worker(int id, std::vector<std::string> _lines);
   int parseRange(int start, int end);
   int run();
+  int getStatus();
   threadWorkerData getParsedData();
 
 };
 
 class RS274 {
 private:
-  std::vector<RS274Worker> tws;
+  std::vector<RS274Worker> workers;
   std::vector<threadWorkerData> twds;
-  std::vector<std::thread> threads;
   std::vector<std::string> linestoparse;
+  std::vector<std::thread> workerthreads;
+  std::vector<gInstruction> instructionMatrix;
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  std::chrono::duration<double> loadtime, parsetime;
   std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
   char* inputBuffer = new char[bufferSize];               //Input buffer for one line
   char* outputBuffer = new char[bufferSize];              //Output buffer for one line
@@ -90,15 +101,11 @@ private:
   int hardwarethreads;
   int jobs;
   int bufferSize = 255;
-  void runWorker(RS274Worker w);
+  void runWorker(RS274Worker& w);
 public:
   RS274();
   RS274(std::string inputFile, std::string outputFile);
-  int parseLine(std::string line);
-  int parse();
-  int parse(std::string &filename);
-  int parse(const char* filename);
-  int parseRange(int start, int end);
+  int run();
   std::string readElement(int lineno);
   int shiftElement(int lineno);
   int shift(double X, double Y, double Z);

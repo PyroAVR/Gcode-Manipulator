@@ -1,12 +1,12 @@
 #include "../RS274.hpp"
 #include <thread>
+#include <chrono>
 #include <fstream>
 #include <string>
 #include <cstdlib>
 
 void runtw(RS274Worker& w) {
   w.run();
-  w.parseRange(0,12);
 
 }
 
@@ -16,8 +16,11 @@ int main(int argc, char* argv[])  {
     std::cout << "Usage: " << argv[0] << " <input> <lineno1> <lineno2>" << std::endl;
     return 0;
   }
+  std::chrono::time_point<std::chrono::system_clock> start, end;
   int blocksize = atoi(argv[3]) - atoi(argv[2]);
+
   char* line = new char[255];
+
   std::ifstream input;
   input.open(argv[1], std::fstream::in);
   std::vector<std::string> l;
@@ -28,8 +31,11 @@ int main(int argc, char* argv[])  {
   }
   std::cout << "closing file" << std::endl;
   input.close();
+
+
   std::vector<threadWorkerData> twds;
   int hwt = std::thread::hardware_concurrency();
+  start = std::chrono::system_clock::now();
   if(l.size() > 100)  {
     int nl = blocksize/hwt;
     std::cout << "lines per job: " << nl << std::endl;
@@ -56,10 +62,16 @@ int main(int argc, char* argv[])  {
   for(auto i : twds) workers.push_back(RS274Worker(i));
   //std::cout << twds.size() << std::endl;
   //std::cout << twds[0].id << std::endl;
-  runtw(workers[0]);
+  std::thread t1(&runtw, std::ref(workers[0]));
+  //runtw(workers[0]);
+  t1.detach();
+  while(workers[0].getStatus() != _done_) {}
+  end = std::chrono::system_clock::now();
+  std::chrono::duration<double> telapsed = end-start;
   threadWorkerData ret = workers[0].getParsedData();
   std::cout << "size of returned mat: " << ret.instructionMatrix.size() << std::endl;
   for(auto i : ret.instructionMatrix) std::cout << i.xCoord << std::endl;
+  std::cout << "Time elapsed: " << telapsed.count() << std::endl;
   /*
   for(auto a : t.instructionMatrix) {
     std::cout << "X:" << a.xCoord << "Y:" << a.yCoord << "Z:" << a.zCoord << std::endl;
