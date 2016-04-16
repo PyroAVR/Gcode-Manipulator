@@ -8,8 +8,8 @@ OUTPUT_NAME	= gcode-manipulator
 SHORT_NAME	= gcmanip
 all: build
 
-build: RS274.o
-	$(CXX) $(FLAGS) $(LIBS) $(OPTIMIZATION) main.cpp RS274.o -o $(OUTPUT_NAME)
+build: libs
+	$(CXX) $(FLAGS) $(LIBS) $(OPTIMIZATION) gcode-manipulator.cpp RS274.o -o $(OUTPUT_NAME)
 
 install: build
 	cp $(OUTPUT_NAME) /usr/bin/$(OUTPUT_NAME)
@@ -17,6 +17,8 @@ install: build
 
 %.o: %.cpp
 	$(CXX) -c $(FLAGS) $(LIBS) $(OPTIMIZATION) $<
+
+libs: RS274.o
 
 shared:
 	$(CXX) -c $(FLAGS) $(LIBS) $(OPTIMIZATION) RS274.cpp -o RS274.so
@@ -27,11 +29,11 @@ install-libs: shared
 	cp RS274.so $(LIBS_PREFIX)/lib/libRS274.so
 
 #failing
-tests: build
+tests: libs
 	$(CXX) $(FLAGS) $(LIBS) $(OPTIMIZATION) RS274.o tests/read_range.cpp -o tests/read_range
 	$(CXX) $(FLAGS) $(LIBS) $(OPTIMIZATION) RS274.o tests/debug_info.cpp -o tests/debug_info
 clean:
-	rm -f *.o *.so tests/read_range
+	rm -f *.o *.so tests/read_range tests/debug_info gcode-manipulator
 help:
 	@echo "Targets:"
 	@echo "build		build everything, do not install to system"

@@ -127,11 +127,6 @@ threadWorkerData RS274Worker::getParsedData()  {
 
 
 
-
-RS274::RS274()  {
-  hardwarethreads = std::thread::hardware_concurrency();
-
-}
 RS274::RS274(std::string inputFile, std::string outputFile) {
   start = std::chrono::system_clock::now();
   input.open(inputFile.c_str(), std::fstream::in);
@@ -179,6 +174,7 @@ RS274::RS274(std::string inputFile, std::string outputFile) {
   for(int i = 0; i < workers.size(); i++) {
     workerthreads.push_back(std::move(std::thread(&RS274::runWorker, this, std::ref(workers[i]))));
   }
+  linecount = linestoparse.size();
   end = std::chrono::system_clock::now();
   loadtime = end-start;
 }
@@ -210,28 +206,73 @@ int RS274::run()  {
   return instructionMatrix.size();
 }
 std::string RS274::readElement(int lineno)  {
-
+  return std::string("Line " + instructionMatrix[lineno].lineno + ": Command/Special : "
+   + instructionMatrix[lineno].command + "/"
+   + instructionMatrix[lineno].specialCommand
+   + " X: " + std::to_string(instructionMatrix[lineno].xCoord)
+   + " Y: " + std::to_string(instructionMatrix[lineno].yCoord)
+   + " Z: " + std::to_string(instructionMatrix[lineno].zCoord)
+   + "Comment: " + instructionMatrix[lineno].comment
+   + "Modal:" + std::to_string(instructionMatrix[lineno].isModal)
+   + "Motion:" + std::to_string(instructionMatrix[lineno].isMotion));
 }
 int RS274::shiftElement(int lineno) {
-
+  /*
+  * Weird, seemingly unnessary or backwards if statements:
+  * Some CAM processors do not write a coordinate at all if there is no change from the previous
+  * position in that axis.  Therefore, we have to not apply any shifts if there is nothing to shift.
+  * To keep the program short, we check if there IS something, and then write, rather than check all
+  * possible cases in which there might NOT be something. Efficiency, HAYO!
+  */
+  //if(instructionMatrix[lineno].command == "") return 0;          //Don't write coords if there isn't a command.
+  if(!std::isnan(instructionMatrix[lineno].xCoord)) instructionMatrix[lineno].xCoord = instructionMatrix[lineno].xCoord + Xshift;
+  if(!std::isnan(instructionMatrix[lineno].yCoord)) instructionMatrix[lineno].yCoord = instructionMatrix[lineno].yCoord + Yshift;
+  instructionMatrix[lineno].zCoord = instructionMatrix[lineno].zCoord + Zshift; //Some transformations are skewed if Z-coordinates not present.
+  return 0;
 }
 int RS274::shift(double X, double Y, double Z)  {
-
+  Xshift = X;
+  Yshift = Y;
+  Zshift = Z;
+  for(int i = 0; i < linecount; i++)  {
+    shiftElement(i);
+  }
+  return 0;
 }
 int RS274::writeLine(int lineno)  {
-
-}
-int RS274::write(std::string &filename) {
-
+  static bool isModal = false;
+  std::string newLine;
+  if(instructionMatrix[lineno].lineno != "") newLine += instructionMatrix[lineno].lineno + " ";                                              //N042
+  //If not modal and special command, write sp command and return, else write command, special, continue
+  if(!instructionMatrix[lineno].isModal) newLine += instructionMatrix[lineno].specialCommand + " ";
+  if(instructionMatrix[lineno].isModal) {                        //N042 G01 The empty check is for my sanity.
+    newLine += instructionMatrix[lineno].command + " ";
+    newLine += instructionMatrix[lineno].specialCommand + " ";
+    if(!std::isnan(instructionMatrix[lineno].xCoord)) newLine += "X" + std::to_string(instructionMatrix[lineno].xCoord) + " ";             //N042 G01 X0.0525
+    if(!std::isnan(instructionMatrix[lineno].yCoord)) newLine += "Y" + std::to_string(instructionMatrix[lineno].yCoord) + " ";            //N042 G01 X0.0525 Y2
+    if(!std::isnan(instructionMatrix[lineno].zCoord)) newLine += "Z" + std::to_string(instructionMatrix[lineno].zCoord) + " ";            //N042 G01 X0.0525 Y2 Z-1.25
+  }
+  if(instructionMatrix[lineno].comment != "") newLine += instructionMatrix[lineno].comment;
+  output << newLine << std::endl;
+  return 0;
 }
 int RS274::write(const char* filename)  {
-
+  if(!output.is_open()) return -1;
+  std::cout << "Input read successfully: " << linecount << " lines parsed." << std::endl;
+  for(int i = 0; i < linecount; i++) {
+    //std::cout << "[translate] (" << i << "/" << linecount << ") " << (static_cast<float>(i)/static_cast<float>(linecount))*100 << "%"  << std::endl;
+    writeLine(i);
+  }
+  return 0;
+}
+int RS274::write(std::string &filename) {
+  return write(filename.c_str());
 }
 std::vector<gInstruction> RS274::getInstructionMatrix()  {
-
+  return instructionMatrix;
 }
 int RS274::size() {
-
+  return linecount;
 }
 RS274::~RS274() {
 

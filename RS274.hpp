@@ -91,19 +91,16 @@ private:
   std::vector<gInstruction> instructionMatrix;
   std::chrono::time_point<std::chrono::system_clock> start, end;
   std::chrono::duration<double> loadtime, parsetime;
-  std::string Usage = "Usage: gcmanip <input> <output> <X> <Y> <Z>";
+  int bufferSize = 255;
   char* inputBuffer = new char[bufferSize];               //Input buffer for one line
   char* outputBuffer = new char[bufferSize];              //Output buffer for one line
   double  Xshift, Yshift, Zshift;
   char *inputFile, outputFile;
   std::ifstream input;
   std::ofstream output;
-  int hardwarethreads;
-  int jobs;
-  int bufferSize = 255;
+  int hardwarethreads, jobs, linecount;
   void runWorker(RS274Worker& w);
 public:
-  RS274();
   RS274(std::string inputFile, std::string outputFile);
   int run();
   std::string readElement(int lineno);
