@@ -4,9 +4,9 @@
 #include <string>
 #include <cstdlib>
 
-void runtw(RS274Worker w) {
-  std::cout << w.getParsedData().id << std::endl;
+void runtw(RS274Worker& w) {
   w.run();
+  w.parseRange(0,12);
 
 }
 
@@ -32,7 +32,7 @@ int main(int argc, char* argv[])  {
   int hwt = std::thread::hardware_concurrency();
   if(l.size() > 100)  {
     int nl = blocksize/hwt;
-    std::cout << nl << std::endl;
+    std::cout << "lines per job: " << nl << std::endl;
     std::vector<std::string>::iterator it = l.begin() + nl;
     threadWorkerData t;
     t.id = 0;
@@ -44,7 +44,7 @@ int main(int argc, char* argv[])  {
       it++;
       std::copy(it, it + nl, back_inserter(t.lines));
       it += nl;
-      twds.push_back(t);
+      twds.push_back(tw);
     }
     t.id = hwt;
     t.lines.clear();
@@ -52,14 +52,14 @@ int main(int argc, char* argv[])  {
     twds.push_back(t);
 
   }
-  std::cout << twds.size() << std::endl;
-  //for(auto i : twds[0].lines) std::cout << i << std::endl;
-  std::cout << twds[0].id << std::endl;
-  runtw(twds[0]);
-  for(auto i : twds[0].instructionMatrix) std::cout << i.xCoord << std::endl;
-  /*for(auto i : twds)  {
-    runtw(i);
-  }*/
+  std::vector<RS274Worker> workers;
+  for(auto i : twds) workers.push_back(RS274Worker(i));
+  //std::cout << twds.size() << std::endl;
+  //std::cout << twds[0].id << std::endl;
+  runtw(workers[0]);
+  threadWorkerData ret = workers[0].getParsedData();
+  std::cout << "size of returned mat: " << ret.instructionMatrix.size() << std::endl;
+  for(auto i : ret.instructionMatrix) std::cout << i.xCoord << std::endl;
   /*
   for(auto a : t.instructionMatrix) {
     std::cout << "X:" << a.xCoord << "Y:" << a.yCoord << "Z:" << a.zCoord << std::endl;
