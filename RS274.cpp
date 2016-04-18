@@ -187,16 +187,28 @@ int RS274::run()  {
   }
   bool isFinished = false;
   int sum;
+  //multiply value of _done_ flag with number of jobs running to determine if they all have finished.
+  int numworkers = workers.size();
   while(!isFinished)  {
-    for(int i = 0; i < workers.size(); i++)  {
+    std::cout << "Running: " << workers.size() << std::endl;
+
+    for(int i = 0; i < numworkers; i++)  {
       sum += workers[i].getStatus();
-      if(sum >= _done_*hardwarethreads) isFinished = true;  //total number of threads * val of _done_ flag
+      if(sum >= _done_*numworkers) isFinished = true;  //total number of threads * val of _done_ flag
     }
     sum = 0;
   }
-  for(auto a : workers)  {
-    std::vector<gInstruction> imat = a.getParsedData().instructionMatrix;
+  //not sure why I'd do this
+  if(numworkers <= 1) {
+    std::cout << "Only one thread" << std::endl;
+    std::vector<gInstruction> imat = workers[0].getParsedData().instructionMatrix;
     std::copy(imat.begin(), imat.end(), back_inserter(instructionMatrix));
+  }
+  else  {
+    for(auto a : workers)  {
+      std::vector<gInstruction> imat = a.getParsedData().instructionMatrix;
+      std::copy(imat.begin(), imat.end(), back_inserter(instructionMatrix));
+    }
   }
   end = std::chrono::system_clock::now();
   parsetime = end - start;
@@ -231,7 +243,9 @@ int RS274::shift(double X, double Y, double Z)  {
   Xshift = X;
   Yshift = Y;
   Zshift = Z;
-  for(int i = 0; i < linecount; i++)  {
+  std::cout << instructionMatrix.size() << std::endl;
+  for(int i = 0; i < instructionMatrix.size(); i++)  {
+    std::cout << readElement(i) << std::endl;
     shiftElement(i);
   }
   return 0;
@@ -256,7 +270,7 @@ int RS274::writeLine(int lineno)  {
 int RS274::write(const char* filename)  {
   if(!output.is_open()) return -1;
   std::cout << "Input read successfully: " << linecount << " lines parsed." << std::endl;
-  for(int i = 0; i < linecount; i++) {
+  for(int i = 0; i < instructionMatrix.size(); i++) {
     //std::cout << "[translate] (" << i << "/" << linecount << ") " << (static_cast<float>(i)/static_cast<float>(linecount))*100 << "%"  << std::endl;
     writeLine(i);
   }
