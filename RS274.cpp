@@ -141,13 +141,13 @@ RS274::RS274(std::string inputFile, std::string outputFile) {
   if(blockSize <= 1) jobs = 1;
   //std::move??
   //also what the hell is all this iterator crap
-  std::vector<std::string>::iterator separator = linestoparse.begin() + blockSize;
-  threadWorkerData t;
-  t.id = 0;
-  t.size = blockSize;
-  std::copy(linestoparse.begin(), separator, back_inserter(t.lines));
-  twds.push_back(t);
   if(jobs > 1) {
+    std::vector<std::string>::iterator separator = linestoparse.begin() + blockSize;
+    threadWorkerData t;
+    t.id = 0;
+    t.size = blockSize;
+    std::copy(linestoparse.begin(), separator, back_inserter(t.lines));
+    twds.push_back(t);
     for(int i = 1; i < jobs -1; i++) {
         separator++;
         t.lines.clear();  //make sure there's no data stored
@@ -164,13 +164,22 @@ RS274::RS274(std::string inputFile, std::string outputFile) {
     std::copy(separator, linestoparse.end(), back_inserter(t.lines));
     t.size = t.lines.size();    //could be larger or smaller than blockSize
     twds.push_back(t);
+
+    for(auto a : twds)  {
+      workers.push_back(RS274Worker(a));
+    }
+    twds.clear();   //don't unncessarily store data
+    for(int i = 0; i < workers.size(); i++) {
+      workerthreads.push_back(std::move(std::thread(&RS274::runWorker, this, std::ref(workers[i]))));
+    }
   }
-  for(auto a : twds)  {
-    workers.push_back(RS274Worker(a));
-  }
-  twds.clear();   //don't unncessarily store data
-  for(int i = 0; i < workers.size(); i++) {
-    workerthreads.push_back(std::move(std::thread(&RS274::runWorker, this, std::ref(workers[i]))));
+  else{
+    threadWorkerData t;
+    t.id = 0;
+    t.size = linestoparse.size();
+    std::copy(linestoparse.begin(), linestoparse.end(), back_inserter(t.lines));
+    workers.push_back(RS274Worker(t));
+    workerthreads.push_back(std::move(std::thread(&RS274::runWorker, this, std::ref(workers[0]))));
   }
   linecount = linestoparse.size();
   end = std::chrono::system_clock::now();
