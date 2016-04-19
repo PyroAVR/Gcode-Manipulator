@@ -199,7 +199,6 @@ int RS274::run()  {
   //multiply value of _done_ flag with number of jobs running to determine if they all have finished.
   int numworkers = workers.size();
   while(!isFinished)  {
-    std::cout << "Running: " << workers.size() << std::endl;
 
     for(int i = 0; i < numworkers; i++)  {
       sum += workers[i].getStatus();
@@ -252,9 +251,7 @@ int RS274::shift(double X, double Y, double Z)  {
   Xshift = X;
   Yshift = Y;
   Zshift = Z;
-  std::cout << instructionMatrix.size() << std::endl;
   for(int i = 0; i < instructionMatrix.size(); i++)  {
-    std::cout << readElement(i) << std::endl;
     shiftElement(i);
   }
   return 0;
@@ -278,9 +275,7 @@ int RS274::writeLine(int lineno)  {
 }
 int RS274::write(const char* filename)  {
   if(!output.is_open()) return -1;
-  std::cout << "Input read successfully: " << linecount << " lines parsed." << std::endl;
   for(int i = 0; i < instructionMatrix.size(); i++) {
-    //std::cout << "[translate] (" << i << "/" << linecount << ") " << (static_cast<float>(i)/static_cast<float>(linecount))*100 << "%"  << std::endl;
     writeLine(i);
   }
   return 0;
