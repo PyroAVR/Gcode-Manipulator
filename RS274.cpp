@@ -139,8 +139,7 @@ RS274::RS274(std::string inputFile, std::string outputFile) {
   int blockSize = linestoparse.size()/hardwarethreads;
   jobs = hardwarethreads; //possibly change later for batched work
   if(blockSize <= 1) jobs = 1;
-  //std::move??
-  //also what the hell is all this iterator crap
+
   if(jobs > 1) {
     std::vector<std::string>::iterator separator = linestoparse.begin() + blockSize;
     threadWorkerData t;
@@ -182,6 +181,7 @@ RS274::RS274(std::string inputFile, std::string outputFile) {
     workerthreads.push_back(std::move(std::thread(&RS274::runWorker, this, std::ref(workers[0]))));
   }
   linecount = linestoparse.size();
+  linestoparse.clear(); //std::move not relevant, just delete orig. after copy
   end = std::chrono::system_clock::now();
   loadtime = end-start;
 }
@@ -208,7 +208,6 @@ int RS274::run()  {
   }
   //not sure why I'd do this
   if(numworkers <= 1) {
-    std::cout << "Only one thread" << std::endl;
     std::vector<gInstruction> imat = workers[0].getParsedData().instructionMatrix;
     std::copy(imat.begin(), imat.end(), back_inserter(instructionMatrix));
   }
@@ -257,18 +256,14 @@ int RS274::shift(double X, double Y, double Z)  {
   return 0;
 }
 int RS274::writeLine(int lineno)  {
-  static bool isModal = false;
   std::string newLine;
   if(instructionMatrix[lineno].lineno != "") newLine += instructionMatrix[lineno].lineno + " ";                                              //N042
   //If not modal and special command, write sp command and return, else write command, special, continue
-  if(!instructionMatrix[lineno].isModal) newLine += instructionMatrix[lineno].specialCommand + " ";
-  if(instructionMatrix[lineno].isModal) {                        //N042 G01 The empty check is for my sanity.
-    newLine += instructionMatrix[lineno].command + " ";
-    newLine += instructionMatrix[lineno].specialCommand + " ";
-    if(!std::isnan(instructionMatrix[lineno].xCoord)) newLine += "X" + std::to_string(instructionMatrix[lineno].xCoord) + " ";             //N042 G01 X0.0525
-    if(!std::isnan(instructionMatrix[lineno].yCoord)) newLine += "Y" + std::to_string(instructionMatrix[lineno].yCoord) + " ";            //N042 G01 X0.0525 Y2
-    if(!std::isnan(instructionMatrix[lineno].zCoord)) newLine += "Z" + std::to_string(instructionMatrix[lineno].zCoord) + " ";            //N042 G01 X0.0525 Y2 Z-1.25
-  }
+  if(instructionMatrix[lineno].command != "") newLine += instructionMatrix[lineno].command + " ";
+  if(instructionMatrix[lineno].specialCommand != "") newLine += instructionMatrix[lineno].specialCommand + " ";
+  if(!std::isnan(instructionMatrix[lineno].xCoord)) newLine += "X" + std::to_string(instructionMatrix[lineno].xCoord) + " ";             //N042 G01 X0.0525
+  if(!std::isnan(instructionMatrix[lineno].yCoord)) newLine += "Y" + std::to_string(instructionMatrix[lineno].yCoord) + " ";            //N042 G01 X0.0525 Y2
+  if(!std::isnan(instructionMatrix[lineno].zCoord)) newLine += "Z" + std::to_string(instructionMatrix[lineno].zCoord) + " ";            //N042 G01 X0.0525 Y2 Z-1.25
   if(instructionMatrix[lineno].comment != "") newLine += instructionMatrix[lineno].comment;
   output << newLine << std::endl;
   return 0;

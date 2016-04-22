@@ -40,6 +40,16 @@ int main(int argc, char* argv[])  {
   rw->run();
   tw = rw->getParsedData();
   std::cout << " Done!" << std::endl;
-  std::cout << tw.instructionMatrix.size() << std::endl;
-
+  for(auto a : tw.instructionMatrix) {
+  std::cout << "Line " << a.lineno << ": Command/Special : "
+   << a.command << "/"
+   << a.specialCommand
+   << " X: " << std::to_string(a.xCoord)
+   << " Y: " << std::to_string(a.yCoord)
+   << " Z: " << std::to_string(a.zCoord)
+   << "Comment: " << a.comment
+   << "Modal:" << std::to_string(a.isModal)
+   << "Motion:" << std::to_string(a.isMotion)
+   << std::endl;
+ }
 }
