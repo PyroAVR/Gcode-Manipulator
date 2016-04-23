@@ -79,7 +79,7 @@ public:
   int run();
   int getStatus();
   threadWorkerData getParsedData();
-
+  ~RS274Worker();
 };
 
 class RS274 {

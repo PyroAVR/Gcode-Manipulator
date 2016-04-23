@@ -40,7 +40,6 @@ gInstruction RS274Tokenizer::parseLine(std::string line)  {
   (commandMatch[0] == "") ? isCommandBlank = true : isCommandBlank = false;
 
   static bool isModalBlock = false;
-  static int modalBlockLine;
 
   if(!isModalBlock) (modalMatch[0] != "") ? isModalBlock = true : isModalBlock = false;
   //if no command, assume still in block
@@ -53,7 +52,7 @@ gInstruction RS274Tokenizer::parseLine(std::string line)  {
   //if a motion command was found
   (motionMatch[0] != "") ? isCommandMotion = true : isCommandMotion = false;
   //if the command is modal and motion, we're starting a block
-  (isLineModal & isCommandMotion) ? isMotionBlock = true : (isLineModal | motionMatch[0] == "") ? isMotionBlock = true : isMotionBlock = false;
+  (isLineModal & isCommandMotion) ? isMotionBlock = true : (isLineModal | (motionMatch[0] == "")) ? isMotionBlock = true : isMotionBlock = false;
   isMotion = isMotionBlock;
   /*
   * Brief explanation of the string-reassignments:
@@ -121,7 +120,10 @@ int RS274Worker::getStatus()  {
 threadWorkerData RS274Worker::getParsedData()  {
   return twd;
 }
-
+RS274Worker::~RS274Worker() {
+  twd.lines.clear();
+  twd.instructionMatrix.clear();
+}
 
 
 
@@ -168,7 +170,7 @@ RS274::RS274(std::string inputFile, std::string outputFile) {
       workers.push_back(RS274Worker(a));
     }
     twds.clear();   //don't unncessarily store data
-    for(int i = 0; i < workers.size(); i++) {
+    for(unsigned int i = 0; i < workers.size(); i++) {
       workerthreads.push_back(std::move(std::thread(&RS274::runWorker, this, std::ref(workers[i]))));
     }
   }
@@ -191,22 +193,21 @@ void RS274::runWorker(RS274Worker& w) {
 
 int RS274::run()  {
   start = std::chrono::system_clock::now();
-  for(int i = 0; i < workerthreads.size(); i++) {
+  for(unsigned int i = 0; i < workerthreads.size(); i++) {
     workerthreads[i].detach();
   }
   bool isFinished = false;
   int sum;
   //multiply value of _done_ flag with number of jobs running to determine if they all have finished.
-  int numworkers = workers.size();
+  unsigned int numworkers = workers.size();
   while(!isFinished)  {
 
-    for(int i = 0; i < numworkers; i++)  {
+    for(unsigned int i = 0; i < numworkers; i++)  {
       sum += workers[i].getStatus();
       if(sum >= _done_*numworkers) isFinished = true;  //total number of threads * val of _done_ flag
     }
     sum = 0;
   }
-  //not sure why I'd do this
   if(numworkers <= 1) {
     std::vector<gInstruction> imat = workers[0].getParsedData().instructionMatrix;
     std::copy(imat.begin(), imat.end(), back_inserter(instructionMatrix));
@@ -250,7 +251,7 @@ int RS274::shift(double X, double Y, double Z)  {
   Xshift = X;
   Yshift = Y;
   Zshift = Z;
-  for(int i = 0; i < instructionMatrix.size(); i++)  {
+  for(unsigned int i = 0; i < instructionMatrix.size(); i++)  {
     shiftElement(i);
   }
   return 0;
@@ -270,7 +271,7 @@ int RS274::writeLine(int lineno)  {
 }
 int RS274::write(const char* filename)  {
   if(!output.is_open()) return -1;
-  for(int i = 0; i < instructionMatrix.size(); i++) {
+  for(unsigned int i = 0; i < instructionMatrix.size(); i++) {
     writeLine(i);
   }
   return 0;
@@ -294,7 +295,11 @@ int RS274::size() {
 RS274::~RS274() {
   delete[] inputBuffer;
   delete[] outputBuffer;
+  linestoparse.clear();     //just in case
   twds.clear();
+  workers.clear();
+  workerthreads.clear();
+  instructionMatrix.clear();
   input.close();
   output.close();
 }
