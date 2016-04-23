@@ -2,8 +2,8 @@ FLAGS = -std=c++1y
 LIBS = -lpthread
 #It's best to keep this high, as this program does take a while on large files
 DEBUG = -O0 -g -Wall -fno-inline
-OPTIMIZATION 	= $(DEBUG)
-CXX		= g++
+OPTIMIZATION 	= -O3
+CXX		= clang++
 LIBS_PREFIX	= /usr
 OUTPUT_NAME	= gcode-manipulator
 SHORT_NAME	= gcmanip
