@@ -10,6 +10,7 @@ It can handle the following codes:
 - F Feedrate
 - P Dwell
 - S Spindle velocity
+- T tool change ID
 - ;comments
 
 It is unconcerned with spaces and other whitespace, and will print neatly formatted output.
